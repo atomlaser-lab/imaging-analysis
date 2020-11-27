@@ -45,7 +45,7 @@ classdef AbsorptionImage < handle
         function self = makeImage(self)
             c = self.constants;
             r = self.raw;
-            Nsat = c.Isat.*(c.pixelSize/c.magnification)^2*c.exposureTime/(const.h*const.c/c.wavelength)/c.photonsPerCount;
+            Nsat = c.Isat.*(c.pixelSize/c.magnification)^2*c.exposureTime/(const.h*const.c/c.wavelength)/c.photonsPerCount*c.polarizationCorrection;
             if size(r.images,3) == 3
                 imgWithAtoms = r.images(:,:,1) - r.images(:,:,3);
                 imgWithoutAtoms = r.images(:,:,2) - r.images(:,:,3);
@@ -56,11 +56,17 @@ classdef AbsorptionImage < handle
                 error('Image sets with %d images are unsupported',size(r.images,3));
             end
 
-            self.image = -c.polarizationCorrection*log(imgWithAtoms./imgWithoutAtoms) + (imgWithoutAtoms - imgWithAtoms)./Nsat;
+            ODraw = -log(imgWithAtoms./imgWithoutAtoms);
+            self.peakOD = max(max(ODraw));
+            
             if ~isinf(c.satOD)
-                self.image = log((1-exp(-c.satOD))./(exp(-self.image)-exp(-c.satOD)));
+                ODmod = log((1-exp(-c.satOD))./(exp(-ODraw)-exp(-c.satOD)));
+            else
+                ODmod = ODraw;
             end
-            self.image = self.image./c.polarizationCorrection;
+            
+            self.image = ODmod + (1 - exp(-ODmod)).*imgWithoutAtoms./Nsat;
+
             self.x = (c.pixelSize/c.magnification)*(1:size(self.image,2));
             self.y = (c.pixelSize/c.magnification)*(1:size(self.image,1));
         end
@@ -75,9 +81,9 @@ classdef AbsorptionImage < handle
 %                 f = self.fitdata.fit(fittype);
 %             end
             c = self.constants;
-            A = (c.pixelSize./c.magnification).^2;
+            A = diff(f.x(1:2))*diff(f.y(1:2));
             self.tof = tof;
-            self.peakOD = max(max(f.image));
+%             self.peakOD = max(max(f.image));
             p = f.params;
             self.gaussWidth = p.gaussWidth;
             self.pos = p.pos;
@@ -88,24 +94,24 @@ classdef AbsorptionImage < handle
             if f.is1D()
                 switch lower(calcmethod)
                     case 'x'
-                        Nth = sqrt(2*pi*A)*p.gaussAmp(1).*p.gaussWidth(1)./c.absorptionCrossSection*c.polarizationCorrection;
-                        Nbec = 8/15*pi*p.becAmp(1).*p.becWidth(1)*sqrt(A)./c.absorptionCrossSection*c.polarizationCorrection;
+                        Nth = sqrt(2*pi*A)*p.gaussAmp(1).*p.gaussWidth(1);
+                        Nbec = 8/15*pi*p.becAmp(1).*p.becWidth(1)*sqrt(A);
                     case 'y'
-                        Nth = sqrt(2*pi*A)*p.gaussAmp(2).*p.gaussWidth(2)./c.absorptionCrossSection*c.polarizationCorrection;
-                        Nbec = 8/15*pi*p.becAmp(2).*p.becWidth(2)*sqrt(A)./c.absorptionCrossSection*c.polarizationCorrection;
+                        Nth = sqrt(2*pi*A)*p.gaussAmp(2).*p.gaussWidth(2);
+                        Nbec = 8/15*pi*p.becAmp(2).*p.becWidth(2)*sqrt(A);
                     case 'xy'
-                        Nth = sqrt(2*pi*A)*sqrt(prod(p.gaussAmp.*p.gaussWidth))./c.absorptionCrossSection*c.polarizationCorrection;
-                        Nbec = 8/15*pi*sqrt(prod(p.becAmp.*p.becWidth))*sqrt(A)./c.absorptionCrossSection*c.polarizationCorrection;
+                        Nth = sqrt(2*pi*A)*sqrt(prod(p.gaussAmp.*p.gaussWidth));
+                        Nbec = 8/15*pi*sqrt(prod(p.becAmp.*p.becWidth))*sqrt(A);
                     otherwise
                         error('Only allowed calculation methods for number of atoms are ''x'', ''y'', and ''xy''');
                 end
             else
                 Nbec = 0;
-                Nth = p.gaussAmp*(2*pi*prod(p.gaussWidth))./c.absorptionCrossSection*c.polarizationCorrection;
+                Nth = p.gaussAmp*(2*pi*prod(p.gaussWidth));
             end
 
-            self.N = Nth + Nbec;
-            self.becFrac = Nbec./self.N;
+            self.N = (Nth + Nbec)./c.absorptionCrossSection*c.polarizationCorrection.*(1+4*(c.detuning/c.gamma).^2);
+            self.becFrac = Nbec./(Nth+Nbec);
             self.PSD = self.calcPSD;
         end
 
@@ -168,8 +174,8 @@ classdef AbsorptionImage < handle
         end
 
         function self = plotAllData(self,maxOD,col1,col2)
-            % subplot(6,6,[2:5 8:11 14:17 20:23]);
-            axes('position',[0.3,0.3,0.6,0.7]);
+%             subplot(6,6,[2:5 8:11 14:17 20:23]);
+            axes('position',[0.3,0.3,0.6,0.65]);
             imagesc(self.image,[0,maxOD]);
             axis equal;
             axis tight;
@@ -183,12 +189,12 @@ classdef AbsorptionImage < handle
             hold on;
             self.plotROI;
 
-            %             subplot(6,6,[1 7 13 19]);
+%             subplot(6,6,[1 7 13 19]);
             axes('position',[0.075,0.35,0.15,0.6]);
             self.plotYData(col1,col2);
 
-            %             subplot(6,6, 31:36)
-            axes('position',[0.1,0.1,0.8,0.15]);
+%             subplot(6,6, 31:36)
+            axes('position',[0.1,0.075,0.8,0.15]);
             self.plotXData(col1,col2);
         end  %End plotAllData
 

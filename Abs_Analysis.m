@@ -5,7 +5,7 @@ tof = 28e-3;
 
 col1 = 'b.-';
 col2 = 'r--';
-maxOD = 2;
+maxOD = 3;
 plotOpt = 0;
 
 fitdata = AtomCloudFit('roiRow',[50,980],...
@@ -15,9 +15,11 @@ fitdata = AtomCloudFit('roiRow',[50,980],...
 
 imgconsts = AtomImageConstants(atomType,'exposureTime',30e-6,...
             'pixelsize',6.45e-6,'magnification',0.97,...
-            'freqs',2*pi*[220,230,100],'photonspercount',1/0.17);
+            'freqs',2*pi*[400,394,78],'detuning',2*pi*12e6,...
+            'polarizationcorrection',2.1,'satOD',5);
 
-directory = 'E:\RawImages\2019\01Jan\top';
+% directory = 'E:\RawImages\2019\01Jan\top';
+directory = '/home/ryan/Matlab/RawImages';
 
 %% Load raw data
 if ischar(varargin{1}) && strcmpi(varargin{1},'last')

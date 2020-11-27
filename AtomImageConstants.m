@@ -10,6 +10,8 @@ classdef AtomImageConstants < handle
 
         exposureTime
         photonsPerCount
+        detuning
+        gamma
 
         satOD
         Isat
@@ -52,6 +54,10 @@ classdef AtomImageConstants < handle
                             self.exposureTime = v;
                         case 'photonspercount'
                             self.photonsPerCount = v;
+                        case 'detuning'
+                            self.detuning = v;
+                        case 'gamma'
+                            self.gamma = v;
                         case 'satod'
                             self.satOD = v;
                         case 'isat'
@@ -73,7 +79,9 @@ classdef AtomImageConstants < handle
             self.pixelSize = 5.67e-6;
             self.magnification = 0.97;
             self.exposureTime = 30e-6;
-            self.photonsPerCount = 1;
+            self.photonsPerCount = 17e3/(2^16*0.174);
+            self.detuning = 0;
+            self.gamma = 2*pi*6.065e6;
 
             if strcmpi(atomType,'Rb87')
                 self.atomType = 'Rb87';
