@@ -22,18 +22,20 @@ classdef AtomImageConstants < handle
 
         function self = AtomImageConstants(atomType,varargin)
             if nargin > 0
-                self.useDefaults;
-                self.setup(varargin);
+                self.useDefaults(atomType);
+                self.setup(atomType,varargin{:});
             end
         end
 
         function self = copy(self,obj)
-            for p = properties(self)
-                self.(p) = obj.(p);
+            p = properties(self);
+            for nn = 1:numel(p)
+                self.(p{nn}) = obj.(p{nn});
             end
         end
 
         function self = setup(self,atomType,varargin)
+            self.atomType = atomType;
             if mod(numel(varargin),2) ~= 0
                 error('Variable argument list must in name/value pairs!');
             else
@@ -82,12 +84,13 @@ classdef AtomImageConstants < handle
                 self.wavelength = 780.241e-9;
                 self.absorptionCrossSection = 3*self.wavelength^2/(2*pi);
                 self.polarizationCorrection = 15/8;
-                error('Atom type not supported!');
+            else
+                error('Atom type ''%s'' not supported!',atomType);
             end
         end
 
         function T = calcTemperature(self,width,tof)
-            T = width.^2./(1+(self.freqs(1:2)*tof).^2).*self.mass./const.kb;
+            T = (self.freqs(1:2).*width).^2./(1+(self.freqs(1:2)*tof).^2).*self.mass./const.kb;
         end
 
     end

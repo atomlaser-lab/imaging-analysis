@@ -44,13 +44,16 @@ classdef AbsorptionImage < handle
 
         function self = makeImage(self)
             c = self.constants;
+            r = self.raw;
             Nsat = c.Isat.*(c.pixelSize/c.magnification)^2*c.exposureTime/(const.h*const.c/c.wavelength)/c.photonsPerCount;
-            if numel(self.raw.images) == 3
-                imgWithAtoms = rawImages.images(:,:,1) - rawImages.images(:,:,3);
-                imgWithoutAtoms = rawImages.images(:,:,2) - rawImages.images(:,:,3);
-            elseif numel(self.raw.images) == 2
-                imgWithAtoms = rawImages.images(:,:,1);
-                imgWithoutAtoms = rawImages.images(:,:,2);
+            if size(r.images,3) == 3
+                imgWithAtoms = r.images(:,:,1) - r.images(:,:,3);
+                imgWithoutAtoms = r.images(:,:,2) - r.images(:,:,3);
+            elseif size(r.images,3) == 2
+                imgWithAtoms = r.images(:,:,1);
+                imgWithoutAtoms = r.images(:,:,2);
+            else
+                error('Image sets with %d images are unsupported',size(r.images,3));
             end
 
             self.image = -c.polarizationCorrection*log(imgWithAtoms./imgWithoutAtoms) + (imgWithoutAtoms - imgWithAtoms)./Nsat;
@@ -58,41 +61,47 @@ classdef AbsorptionImage < handle
                 self.image = log((1-exp(-c.satOD))./(exp(-self.image)-exp(-c.satOD)));
             end
             self.image = self.image./c.polarizationCorrection;
-            self.x = (self.pixelSize/self.magnification)*(1:size(self.image,2));
-            self.y = (self.pixelSize/self.magnification)*(1:size(self.image,1));
+            self.x = (c.pixelSize/c.magnification)*(1:size(self.image,2));
+            self.y = (c.pixelSize/c.magnification)*(1:size(self.image,1));
         end
 
         
 
         function self = fit(self,fittype,tof,calcmethod)
             f = self.fitdata.fit(fittype);
+%             if isempty(fittype)
+%                 f = self.fitdata.fit;
+%             else
+%                 f = self.fitdata.fit(fittype);
+%             end
             c = self.constants;
             A = (c.pixelSize./c.magnification).^2;
             self.tof = tof;
             self.peakOD = max(max(f.image));
-            self.gaussWidth = f.gaussWidth;
-            self.pos = f.pos;
-            self.becWidth = f.becWidth;
-            self.cloudAngle = f.cloudAngle;
+            p = f.params;
+            self.gaussWidth = p.gaussWidth;
+            self.pos = p.pos;
+            self.becWidth = p.becWidth;
+            self.cloudAngle = p.cloudAngle;
             self.T = c.calcTemperature(self.gaussWidth,tof);
 
             if f.is1D()
                 switch lower(calcmethod)
                     case 'x'
-                        Nth = sqrt(2*pi*A)*f.gaussAmp(1).*f.gaussWidth(1)./c.absorptionCrossSection*c.polarizationCorrection;
-                        Nbec = 8/15*pi*f.becAmp(1).*f.becWidth(1)*sqrt(A)./c.absorptionCrossSection*c.polarizationCorrection;
+                        Nth = sqrt(2*pi*A)*p.gaussAmp(1).*p.gaussWidth(1)./c.absorptionCrossSection*c.polarizationCorrection;
+                        Nbec = 8/15*pi*p.becAmp(1).*p.becWidth(1)*sqrt(A)./c.absorptionCrossSection*c.polarizationCorrection;
                     case 'y'
-                        Nth = sqrt(2*pi*A)*f.gaussAmp(2).*f.gaussWidth(2)./c.absorptionCrossSection*c.polarizationCorrection;
-                        Nbec = 8/15*pi*f.becAmp(2).*f.becWidth(2)*sqrt(A)./c.absorptionCrossSection*c.polarizationCorrection;
+                        Nth = sqrt(2*pi*A)*p.gaussAmp(2).*p.gaussWidth(2)./c.absorptionCrossSection*c.polarizationCorrection;
+                        Nbec = 8/15*pi*p.becAmp(2).*p.becWidth(2)*sqrt(A)./c.absorptionCrossSection*c.polarizationCorrection;
                     case 'xy'
-                        Nth = sqrt(2*pi*A)*sqrt(prod(f.gaussAmp.*f.gaussWidth))./c.absorptionCrossSection*c.polarizationCorrection;
-                        Nbec = 8/15*pi*sqrt(prod(f.becAmp.*f.becWidth))*sqrt(A)./c.absorptionCrossSection*c.polarizationCorrection;
+                        Nth = sqrt(2*pi*A)*sqrt(prod(p.gaussAmp.*p.gaussWidth))./c.absorptionCrossSection*c.polarizationCorrection;
+                        Nbec = 8/15*pi*sqrt(prod(p.becAmp.*p.becWidth))*sqrt(A)./c.absorptionCrossSection*c.polarizationCorrection;
                     otherwise
                         error('Only allowed calculation methods for number of atoms are ''x'', ''y'', and ''xy''');
                 end
             else
                 Nbec = 0;
-                Nth = f.gaussAmp*(2*pi*prod(f.gaussWidth));
+                Nth = p.gaussAmp*(2*pi*prod(p.gaussWidth))./c.absorptionCrossSection*c.polarizationCorrection;
             end
 
             self.N = Nth + Nbec;
@@ -102,13 +111,14 @@ classdef AbsorptionImage < handle
 
         function PSD = calcPSD(self)
             c = self.constants;
-            deBroglie = sqrt(2*pi*const.hbar^2./(f.mass.*const.kb.*sqrt(self.T));
+            deBroglie = sqrt(2*pi*const.hbar^2./(c.mass.*const.kb.*sqrt(prod(self.T))));
             estGaussWidths = sqrt(const.kb*sqrt(prod(self.T))./(c.mass*c.freqs.^2));
 
             nGauss = (1-self.becFrac)*self.N./((2*pi)^1.5*prod(estGaussWidths));
             nBEC = (15*self.becFrac*self.N/(8*pi))^(2/5)*(c.mass*prod(c.freqs)^(2/3)/2).^(3/5);
             n0 = nGauss + nBEC;
             self.PSD = n0.*deBroglie^3;
+            PSD = self.PSD;
        end
 
 
@@ -134,8 +144,8 @@ classdef AbsorptionImage < handle
             plot(f.ydata,-f.y,col1);
             hold on
             plot(f.yfit,-f.y,col2);
-            str{1} = sprintf('\sigma_{y} = %3.1f um',self.gaussWidth(2)*1e6);
-            str{2} = sprintf('R_{y} = %3.1f um',self.becWidth(2)*1e6);
+            str{1} = sprintf('Gauss_{y} = %3.1f um',self.gaussWidth(2)*1e6);
+            str{2} = sprintf('TF_{y} = %3.1f um',self.becWidth(2)*1e6);
             hold off;
             xlabel(str,'fontsize',8);
         end
@@ -151,8 +161,8 @@ classdef AbsorptionImage < handle
             plot(f.x,f.xdata,col1);
             hold on
             plot(f.x,f.xfit,col2);
-            str{1} = sprintf('\sigma_{x} = %3.1f um',self.gaussWidth(1)*1e6);
-            str{2} = sprintf('R_{x} = %3.1f um',self.becWidth(1)*1e6);
+            str{1} = sprintf('Gauss_{x} = %3.1f um',self.gaussWidth(1)*1e6);
+            str{2} = sprintf('TF_{x} = %3.1f um',self.becWidth(1)*1e6);
             hold off;
             xlabel(str,'fontsize',8);
         end
@@ -179,7 +189,7 @@ classdef AbsorptionImage < handle
 
             %             subplot(6,6, 31:36)
             axes('position',[0.1,0.1,0.8,0.15]);
-            self.plotZData(col1,col2);
+            self.plotXData(col1,col2);
         end  %End plotAllData
 
         function self = plotAbsData(self,maxOD)
@@ -195,10 +205,10 @@ classdef AbsorptionImage < handle
 
         %% Labelling functions
         function [labelStr,numberStrTotal] = labelOneROI(self)
-            labelCell = {'Image','y width/um','x width/um','Natoms','PeakOD','T/nk','PSD'};
+            labelCell = {'Image','x width/um','y width/um','Natoms','PeakOD','T/nk','PSD'};
             formatCell = {'% 5d','%0.3e','%0.3e','%0.2e','%0.2e','%0.2e','%0.2e'};
-            imgNum = str2double(self.raw.getImageNumbers);
-            numberCell = {imgNum(1),self.yWidth(1)*1e6,self.zWidth(1)*1e6,self.numAtoms(1),self.peakOD(1),self.Ty(1)*1e9,self.PSD};
+            imgNum = self.raw.getImageNumbers;
+            numberCell = {imgNum(1),self.gaussWidth(1)*1e6,self.gaussWidth(2)*1e6,self.N,self.peakOD,sqrt(prod(self.T))*1e9,self.PSD};
             [labelStr,numberStrTotal] = self.formatLabel(labelCell,formatCell,numberCell);
         end
 

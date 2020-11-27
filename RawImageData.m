@@ -6,7 +6,7 @@ classdef RawImageData < handle
         images
     end
 
-    properties(Constant)
+    properties(Constant, Hidden=true)
         SIZE = [1036,1384];
         DEFAULT_DIRECTORY = 'E:\RawImages\2019\01Jan\top';
         DEFAULT_NUM_IMAGES = 2;
@@ -26,8 +26,9 @@ classdef RawImageData < handle
         end
 
         function self = copy(self,obj)
-            for p = properties(self)
-                self.(p) = obj.(p);
+            p = properties(self);
+            for nn = 1:numel(p)
+                self.(p{nn}) = obj.(p{nn});
             end
         end
         

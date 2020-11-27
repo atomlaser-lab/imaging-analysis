@@ -10,11 +10,11 @@ plotOpt = 0;
 
 fitdata = AtomCloudFit('roiRow',[50,980],...
                        'roiCol',[50,1330],...
-                       'roiStep',1,...
-                       'fittype','gauss2d');    %Options: gauss1d, twocomp1d, bec1d, gauss2d, gauss2dangle
+                       'roiStep',10,...
+                       'fittype','gauss1d');    %Options: gauss1d, twocomp1d, bec1d, gauss2d, gauss2dangle
 
 imgconsts = AtomImageConstants(atomType,'exposureTime',30e-6,...
-            'pixelsize',6.45e-6,'magnificantion',0.97,...
+            'pixelsize',6.45e-6,'magnification',0.97,...
             'freqs',2*pi*[220,230,100],'photonspercount',1/0.17);
 
 directory = 'E:\RawImages\2019\01Jan\top';
@@ -41,7 +41,7 @@ else
 end
 
 numImages = numel(raw);
-plotOpt = plotOpt || N==1;
+plotOpt = plotOpt || numImages==1;
 
 cloud(numImages,1) = AbsorptionImage;
 
@@ -49,6 +49,7 @@ for jj = 1:numImages
 
     cloud(jj).constants.copy(imgconsts);
     cloud(jj).fitdata.copy(fitdata);
+    cloud(jj).raw.copy(raw(jj));
     cloud(jj).makeImage;
     cloud(jj).fitdata.makeFitObjects(cloud(jj).x,cloud(jj).y,cloud(jj).image);
     cloud(jj).fit([],tof,'xy');

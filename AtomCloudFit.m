@@ -26,8 +26,9 @@ classdef AtomCloudFit < handle
         end
 
         function self = copy(self,obj)
-            for p = properties(self)
-                self.(p) = obj.(p);
+            p = properties(self);
+            for nn = 1:numel(p)
+                self.(p{nn}) = obj.(p{nn});
             end
         end
 
@@ -43,7 +44,7 @@ classdef AtomCloudFit < handle
                             self.roiRow = v;
                         case 'roicol'
                             self.roiCol = v;
-                        case 'roiStep'
+                        case 'roistep'
                             self.roiStep = v;
                         case 'fittype'
                             self.fittype = v;
@@ -124,29 +125,27 @@ classdef AtomCloudFit < handle
         end
 
         function self = fit(self,fittype)
-            if nargin > 0 || isempty(fittype)
+            if nargin > 0 && ~isempty(fittype)
                 self.fittype = fittype;
             end
 
             switch self.fittype
                 case 'gauss1d'
                     [px,self.xfit] = self.fitGauss1D(self.x,self.xdata);
-                    [py,self.yfit] = self.fitGauss1D(self.x,self.ydata);
+                    [py,self.yfit] = self.fitGauss1D(self.y,self.ydata);
                     self.params = CloudParameters(px,py);
                 case 'twocomp1d'
                     [px,self.xfit] = self.twoComp1D(self.x,self.xdata);
-                    [py,self.yfit] = self.twoComp1D(self.x,self.ydata);
+                    [py,self.yfit] = self.twoComp1D(self.y,self.ydata);
                     self.params = CloudParameters(px,py);
                 case 'tf1d'
                     [px,self.xfit] = self.fitTF1D(self.x,self.xdata);
-                    [py,self.yfit] = self.fitTF1D(self.x,self.ydata);
+                    [py,self.yfit] = self.fitTF1D(self.y,self.ydata);
                     self.params = CloudParameters(px,py);
                 case 'gauss2d'
-                    [row,col] = self.makeROIVectors;
                     [self.params,f] = self.fitGauss2D(self.x,self.y,self.image,false);
                     self.xfit = sum(f,1);self.yfit = sum(f,2);
                 case 'gauss2dangle'
-                    [row,col] = self.makeROIVectors;
                     [self.params,f] = self.fitGauss2D(self.x,self.y,self.image,true);
                     self.xfit = sum(f,1);self.yfit = sum(f,2);
             end
@@ -175,7 +174,7 @@ classdef AtomCloudFit < handle
         end
 
         function F = gauss2DAngle(c,Z)
-            x = Z(:,:,1);
+            x = Z(:,:,1); %#ok<*PROP>
             y = Z(:,:,2);
             
             F = c(1)*exp(-((x-c(2))*cos(c(9))+(y-c(4))*sin(c(9))).^2./(2*c(3).^2)-(-(x-c(2))*sin(c(9))+(y-c(4))*cos(c(9))).^2./(2*c(5).^2))+c(6)*x+c(7)*y+c(8);
@@ -216,10 +215,10 @@ classdef AtomCloudFit < handle
         function guess = guessTFParams(x,y)
             Az = min(y);
             [B,I] = max(y);
-            Bz = 2/pi*(B-guess.y0);
+            Bz = 2/pi*(B-Az);
             Cz = x(I);
 
-            tmp = y - guess.y0;
+            tmp = y - Az;
             tmp = tmp./max(tmp);
             wp = 0.5;
 
@@ -244,7 +243,7 @@ classdef AtomCloudFit < handle
             catch err
                 if (strcmp(err.identifier,'optimlib:snls:UsrObjUndefAtX0'))
                     disp('No atoms found in ROI for fit');
-                    params = zeros(size(params));
+                    params = zeros(size(guess));
                 else
                     rethrow(err);
                 end
@@ -296,7 +295,7 @@ classdef AtomCloudFit < handle
             options = optimset('Display','off', 'MaxFunEvals',100000, 'TolFun', 1e-9, 'TolX', 1e-9);
             lb = [0,0,0,0,0,-1e6,-1e6,-10];ub = [10,1,1,1,1,1e6,1e6,10];
             gx = AtomCloudFit.guessGaussParams(x,sum(z,1));
-            gx = AtomCloudFit.guessGaussParams(y,sum(z,2));
+            gy = AtomCloudFit.guessGaussParams(y,sum(z,2));
             amp = max(z(:));
             z0 = min(z(:));
   
@@ -304,17 +303,17 @@ classdef AtomCloudFit < handle
             [X,Y]=meshgrid(x,y);
             Position(:,:,1)=X;
             Position(:,:,2)=Y;
-            guess = [Amp gx.pos gx.gaussWidth gy.pos gy.gaussWidth 0 0 z0];
+            guess = [amp gx.pos gx.gaussWidth gy.pos gy.gaussWidth 0 0 z0];
             if includeRotation
                 lb(end+1) = -pi/6;
                 ub(end+1) = pi/6;
                 guess(end+1) = 0;
                 func = @(c,x) AtomCloudFit.gauss2DAngle(c,x);
             else
-                func = @(c,x) = AtomCloudFit.gauss2D(c,x);
+                func = @(c,x) AtomCloudFit.gauss2D(c,x);
             end
             params = AtomCloudFit.attemptFit(func,guess,Position,z,lb,ub,options);
-            p = CloudParameters(params(8),params([2,4]),params(1),params([3,5]),0,0);
+            p = CloudParameters(params(8),params([2,4]),params(1),params([3,5]),0,[0,0]);
             f = func(params,Position);
         end  %End fitGauss2D
     end
