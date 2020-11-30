@@ -5,21 +5,21 @@ tof = 28e-3;
 
 col1 = 'b.-';
 col2 = 'r--';
-maxOD = 3;
+maxOD = 2;
 plotOpt = 0;
 
 fitdata = AtomCloudFit('roiRow',[50,980],...
                        'roiCol',[50,1330],...
                        'roiStep',10,...
-                       'fittype','gauss1d');    %Options: gauss1d, twocomp1d, bec1d, gauss2d, gauss2dangle
+                       'fittype','gauss2d');    %Options: gauss1d, twocomp1d, bec1d, gauss2d, gauss2dangle
 
 imgconsts = AtomImageConstants(atomType,'exposureTime',30e-6,...
             'pixelsize',6.45e-6,'magnification',0.97,...
-            'freqs',2*pi*[400,394,78],'detuning',2*pi*12e6,...
+            'freqs',2*pi*[400,394,78],'detuning',16,...
             'polarizationcorrection',2.1,'satOD',5);
 
-% directory = 'E:\RawImages\2019\01Jan\top';
-directory = '/home/ryan/Matlab/RawImages';
+directory = 'E:\RawImages\2019\01Jan\top';
+% directory = '/home/ryan/Matlab/RawImages';
 
 %% Load raw data
 if ischar(varargin{1}) && strcmpi(varargin{1},'last')

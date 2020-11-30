@@ -76,12 +76,12 @@ classdef AtomImageConstants < handle
         end
 
         function self = useDefaults(self,atomType)
-            self.pixelSize = 5.67e-6;
+            self.pixelSize = 6.45e-6;
             self.magnification = 0.97;
             self.exposureTime = 30e-6;
             self.photonsPerCount = 17e3/(2^16*0.174);
             self.detuning = 0;
-            self.gamma = 2*pi*6.065e6;
+            self.gamma = 6.065;
 
             if strcmpi(atomType,'Rb87')
                 self.atomType = 'Rb87';
