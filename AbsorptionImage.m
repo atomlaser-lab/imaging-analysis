@@ -92,6 +92,7 @@ classdef AbsorptionImage < handle
             self.becWidth = p.becWidth;
             self.cloudAngle = p.cloudAngle;
             self.T = c.calcTemperature(self.gaussWidth,tof);
+            self.peakOD = max(max(f.image));
 
             if f.is1D()
                 switch lower(calcmethod)
@@ -108,7 +109,7 @@ classdef AbsorptionImage < handle
                         error('Only allowed calculation methods for number of atoms are ''x'', ''y'', and ''xy''');
                 end
             else
-                Nbec = 0;
+                Nbec = 2*pi/5*p.becAmp*prod(p.becWidth);
                 Nth = p.gaussAmp*(2*pi*prod(p.gaussWidth));
             end
 
@@ -156,6 +157,7 @@ classdef AbsorptionImage < handle
             str{1} = sprintf('Gauss_{y} = %3.1f um',self.gaussWidth(2)*1e6);
             str{2} = sprintf('TF_{y} = %3.1f um',self.becWidth(2)*1e6);
             hold off;
+%             xlim([min(f.ydata),max(f.ydata)]);
             xlabel(str,'fontsize',8);
         end
 
@@ -214,10 +216,10 @@ classdef AbsorptionImage < handle
 
         %% Labelling functions
         function [labelStr,numberStrTotal] = labelOneROI(self)
-            labelCell = {'Image','x width/um','y width/um','Natoms','PeakOD','T/nk','PSD'};
-            formatCell = {'% 5d','%0.3e','%0.3e','%0.2e','%0.2e','%0.2e','%0.2e'};
+            labelCell = {'Image','x width/um','y width/um','Natoms','BEC %','PeakOD','T/nk','PSD'};
+            formatCell = {'% 5d','%0.3e','%0.3e','%0.2e','%0.2f','%0.2e','%0.2e','%0.2e'};
             imgNum = self.raw.getImageNumbers;
-            numberCell = {imgNum(1),self.gaussWidth(1)*1e6,self.gaussWidth(2)*1e6,self.N,self.peakOD,sqrt(prod(self.T))*1e9,self.PSD};
+            numberCell = {imgNum(1),self.gaussWidth(1)*1e6,self.gaussWidth(2)*1e6,self.N,self.becFrac*1e2,self.peakOD,sqrt(prod(self.T))*1e9,self.PSD};
             [labelStr,numberStrTotal] = self.formatLabel(labelCell,formatCell,numberCell);
         end
 

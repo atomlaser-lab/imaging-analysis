@@ -1,24 +1,25 @@
 function cloud = Abs_Analysis(varargin)
 
 atomType = 'Rb87';
-tof = 28e-3;
+tof = 35e-3;
 
 col1 = 'b.-';
 col2 = 'r--';
-maxOD = 2;
+maxOD = 1;
 plotOpt = 0;
 
-fitdata = AtomCloudFit('roiRow',[50,980],...
-                       'roiCol',[50,1330],...
-                       'roiStep',10,...
-                       'fittype','gauss2d');    %Options: gauss1d, twocomp1d, bec1d, gauss2d, gauss2dangle
+fitdata = AtomCloudFit('roiRow',[400,700],...
+                       'roiCol',[150,400],...
+                       'roiStep',1,...
+                       'fittype','tf1d');    %Options: gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d
 
 imgconsts = AtomImageConstants(atomType,'exposureTime',30e-6,...
             'pixelsize',6.45e-6,'magnification',0.97,...
-            'freqs',2*pi*[400,394,78],'detuning',16,...
-            'polarizationcorrection',2.1,'satOD',5);
+            'freqs',2*pi*[40,23,8],'detuning',16,...
+            'polarizationcorrection',1.5,'satOD',5e3);
 
-directory = 'E:\RawImages\2019\01Jan\top';
+% directory = 'E:\RawImages\2019\01Jan\top';
+directory = 'E:\RawImages\2020';
 % directory = '/home/ryan/Matlab/RawImages';
 
 %% Load raw data
@@ -53,8 +54,8 @@ for jj = 1:numImages
     cloud(jj).fitdata.copy(fitdata);
     cloud(jj).raw.copy(raw(jj));
     cloud(jj).makeImage;
-    cloud(jj).fitdata.makeFitObjects(cloud(jj).x,cloud(jj).y,cloud(jj).image);
-    cloud(jj).fit([],tof,'xy');
+%     cloud(jj).fitdata.makeFitObjects(cloud(jj).x,cloud(jj).y,cloud(jj).image);
+    cloud(jj).fit([],tof,'y');
         
     %% Plotting
     if plotOpt
