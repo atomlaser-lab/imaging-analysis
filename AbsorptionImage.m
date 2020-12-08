@@ -61,18 +61,17 @@ classdef AbsorptionImage < handle
                 error('Image sets with %d images are unsupported',size(r.images,3));
             end
 
-            ODraw = -log(imgWithAtoms./imgWithoutAtoms);
+            ODraw = real(-log(imgWithAtoms./imgWithoutAtoms));
             self.image = ODraw;
             self.peakOD = max(max(ODraw));
             
             if ~isinf(c.satOD)
-                ODmod = log((1-exp(-c.satOD))./(exp(-ODraw)-exp(-c.satOD)));
+                ODmod = real(log((1-exp(-c.satOD))./(exp(-ODraw)-exp(-c.satOD))));
             else
                 ODmod = ODraw;
             end
             
             self.imageCorr = c.polarizationCorrection*ODmod + (1 - exp(-ODmod)).*imgWithoutAtoms./Nsat;
-
             self.x = (c.pixelSize/c.magnification)*(1:size(self.image,2));
             self.y = (c.pixelSize/c.magnification)*(1:size(self.image,1));
         end
@@ -98,13 +97,16 @@ classdef AbsorptionImage < handle
                 switch lower(calcmethod)
                     case 'x'
                         Nth = sqrt(2*pi)*dy*p.gaussAmp(1).*p.gaussWidth(1);
-                        Nbec = 8/15*pi*p.becAmp(1).*p.becWidth(1)*dy;
+%                         Nbec = 8/15*pi*p.becAmp(1).*p.becWidth(1)*dy;
+                        Nbec = 16/15*p.becAmp(1).*p.becWidth(1)*dy;
                     case 'y'
                         Nth = sqrt(2*pi)*dx*p.gaussAmp(2).*p.gaussWidth(2);
-                        Nbec = 8/15*pi*p.becAmp(2).*p.becWidth(2)*dx;
+%                         Nbec = 8/15*pi*p.becAmp(2).*p.becWidth(2)*dx;
+                        Nbec = 16/15*p.becAmp(2).*p.becWidth(2)*dx;
                     case 'xy'
                         Nth = sqrt(2*pi*dx*dy)*sqrt(prod(p.gaussAmp.*p.gaussWidth));
-                        Nbec = 8/15*pi*sqrt(prod(p.becAmp.*p.becWidth))*sqrt(dx*dy);
+%                         Nbec = 8/15*pi*sqrt(prod(p.becAmp.*p.becWidth))*sqrt(dx*dy);
+                        Nbec = 16/15*sqrt(prod(p.becAmp.*p.becWidth))*sqrt(dx*dy);
                     otherwise
                         error('Only allowed calculation methods for number of atoms are ''x'', ''y'', and ''xy''');
                 end

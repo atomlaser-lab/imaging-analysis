@@ -13,13 +13,15 @@ classdef CloudParameters
     methods
         function self = CloudParameters(varargin)
             self.offset = 0;
-            self.pos = 0;
+            self.pos = [0,0];
             self.gaussAmp = 0;
-            self.gaussWidth = 0;
+            self.gaussWidth = [0,0];
             self.becAmp = 0;
-            self.becWidth = 0;
+            self.becWidth = [0,0];
             self.cloudAngle = 0;
-            if isa(varargin{1},'CloudParameters') && isa(varargin{2},'CloudParameters')
+            if nargin == 0
+                return
+            elseif isa(varargin{1},'CloudParameters') && isa(varargin{2},'CloudParameters')
                 p1 = varargin{1};p2 = varargin{2};
                 self.offset = [p1.offset,p2.offset];
                 self.pos = [p1.pos,p2.pos];
