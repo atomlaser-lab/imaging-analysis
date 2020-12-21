@@ -113,6 +113,7 @@ classdef AbsorptionImage < handle
             else
                 Nbec = 2*pi/5*p.becAmp*prod(p.becWidth);
                 Nth = p.gaussAmp*(2*pi*prod(p.gaussWidth));
+                self.peakOD = p.becAmp +p.gaussAmp;
             end
 
 %             self.N = (Nth + Nbec)./c.absorptionCrossSection*c.polarizationCorrection.*(1+4*(c.detuning/c.gamma).^2);
