@@ -110,7 +110,7 @@ classdef RawImageData < handle
                 dates(nn,1) = datenum(f(nn).date);
             end
             if any(abs(diff(dates)) > 3)
-                warning('Set of images may not have been taken together. Time difference of %.3f',max(abs(diff(dates))));
+                warning('Set of images may not have been taken together. Time difference of %.3f s',max(abs(diff(dates))));
             end
         end
 

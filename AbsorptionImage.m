@@ -76,12 +76,15 @@ classdef AbsorptionImage < handle
             self.y = (c.pixelSize/c.magnification)*(1:size(self.image,1));
         end
 
-        function self = fit(self,fittype,tof,calcmethod)
+        function self = fit(self,fittype,tof,calcmethod,ex)
             c = self.constants;
             f = self.fitdata;
             
             f.makeFitObjects(self.x,self.y,self.imageCorr);
-            f.fit(fittype);
+            if nargin < 5
+                ex = [];
+            end
+            f.fit(fittype,ex);
             
             dx = diff(f.x(1:2));dy = diff(f.y(1:2));
             self.tof = tof;
