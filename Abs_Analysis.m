@@ -5,22 +5,23 @@ tof = 35e-3;
 
 col1 = 'b.-';
 col2 = 'r--';
-maxOD = 2;
+dispOD = [0,2];
 plotOpt = 0;
+plotROI = 1;
 
-fitdata = AtomCloudFit('roiRow',[150,475],...
-                       'roiCol',[550,900],...
-                       'roiStep',2,...
-                       'fittype','tf2d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d
+fitdata = AtomCloudFit('roiRow',[500,700],...
+                       'roiCol',[10,250],...
+                       'roiStep',1,...
+                       'fittype','2comp2d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d
 
-imgconsts = AtomImageConstants(atomType,'exposureTime',10e-6,...
-            'pixelsize',6.45e-6,'magnification',0.92,...
-            'freqs',2*pi*[40,23,8],'detuning',(8.468-8.468)*13.1533,...
+detFunc = @(x) (x-8.4985)*12.918;
+imgconsts = AtomImageConstants(atomType,'exposureTime',30e-6,...
+            'pixelsize',6.45e-6,'magnification',0.97,...
+            'freqs',2*pi*[40,23,8],'detuning',detFunc(8.25),...
             'polarizationcorrection',1.5,'satOD',5);
 
 % directory = 'E:\RawImages\2019\01Jan\top';
-directory = 'E:\RawImages\2020';
-% directory = '/home/ryan/Matlab/RawImages';
+directory = 'Z:';
 
 %% Load raw data
 if ischar(varargin{1}) && strcmpi(varargin{1},'last')
@@ -62,7 +63,7 @@ for jj = 1:numImages
     if plotOpt
         if numImages == 1
             figure(3);clf;
-            cloud(jj).plotAllData(maxOD,col1,col2);
+            cloud(jj).plotAllData(dispOD,col1,col2,plotROI);
         else
             if jj == 1
                 figure(3);clf;
@@ -71,7 +72,7 @@ for jj = 1:numImages
             
             figure(3);
             subplot(dimSubPlot,dimSubPlot,jj);
-            cloud(jj).plotAbsData(maxOD);
+            cloud(jj).plotAbsData(dispOD,plotROI);
         end
     end
     

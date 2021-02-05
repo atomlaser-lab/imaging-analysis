@@ -184,14 +184,21 @@ classdef AbsorptionImage < handle
             xlabel(str,'fontsize',8);
         end
 
-        function self = plotAllData(self,maxOD,col1,col2)
+        function self = plotAllData(self,dispOD,col1,col2,plotROI)
+            if nargin < 5
+                plotROI = false;
+            end
 %             subplot(6,6,[2:5 8:11 14:17 20:23]);
             axes('position',[0.3,0.3,0.6,0.65]);
-            imagesc(self.image,[0,maxOD]);
+            imagesc(self.image,dispOD);
             axis equal;
             axis tight;
             colorbar;
             colormap(jet);
+            if plotROI
+                xlim(self.fitdata.roiCol);
+                ylim(self.fitdata.roiRow);
+            end
             imgNums = self.raw.getImageNumbers;
             strTitle = sprintf('Image: %d',imgNums(1));
             title(strTitle,'fontsize',14);
@@ -209,12 +216,19 @@ classdef AbsorptionImage < handle
             self.plotXData(col1,col2);
         end  %End plotAllData
 
-        function self = plotAbsData(self,maxOD)
-            imagesc(self.image,[0,maxOD]);
+        function self = plotAbsData(self,dispOD,plotROI)
+            if nargin < 3
+                plotROI = false;
+            end
+            imagesc(self.image,dispOD);
             axis equal;
             axis tight;
             colorbar;
             colormap(jet);
+            if plotROI
+                xlim(self.fitdata.roiCol);
+                ylim(self.fitdata.roiRow);
+            end
             imgNums = self.raw.getImageNumbers;
             strTitle = sprintf('Image: %d',imgNums(1));
             title(strTitle,'fontsize',14);
