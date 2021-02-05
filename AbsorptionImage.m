@@ -50,7 +50,7 @@ classdef AbsorptionImage < handle
         function self = makeImage(self)
             c = self.constants;
             r = self.raw;
-            Nsat = c.Isat.*(c.pixelSize/c.magnification)^2*c.exposureTime/(const.h*const.c/c.wavelength)/c.photonsPerCount*c.polarizationCorrection*(1+4*(c.detuning/c.gamma).^2);
+            Nsat = c.satN;
             if size(r.images,3) == 3
                 imgWithAtoms = r.images(:,:,1) - r.images(:,:,3);
                 imgWithoutAtoms = r.images(:,:,2) - r.images(:,:,3);
