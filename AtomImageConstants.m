@@ -102,7 +102,7 @@ classdef AtomImageConstants < handle
         end
         
         function Nsat = satN(self)
-            Nsat = self.Isat.*(self.pixelSize/self.magnification)^2*self.exposureTime/(const.h*const.c/self.wavelength)/self.photonsPerCount*self.polarizationCorrection*(1+4*(self.detuning/self.gamma).^2);
+            Nsat = self.Isat.*(self.pixelSize/self.magnification)^2*self.exposureTime/(const.h*const.c/self.wavelength)/self.photonsPerCount*(1+4*(self.detuning/self.gamma).^2);
         end
 
     end
