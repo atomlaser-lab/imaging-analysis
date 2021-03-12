@@ -76,10 +76,10 @@ classdef AtomImageConstants < handle
         end
 
         function self = useDefaults(self,atomType)
-            self.pixelSize = 6.45e-6;
-            self.magnification = 0.97;
+            self.pixelSize = 5.5e-6;
+            self.magnification = 0.25;
             self.exposureTime = 30e-6;
-            self.photonsPerCount = 17e3/(2^16*0.174);
+            self.photonsPerCount = 9094/(2^16*0.4);
             self.detuning = 0;
             self.gamma = 6.065;
 

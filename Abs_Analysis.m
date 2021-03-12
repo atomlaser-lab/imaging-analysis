@@ -1,27 +1,26 @@
 function cloud = Abs_Analysis(varargin)
 
 atomType = 'Rb87';
-tof = 35e-3;
+tof = 31e-3;
 
 col1 = 'b.-';
 col2 = 'r--';
-dispOD = [0,2];
+dispOD = [0,0.5];
 plotOpt = 0;
 plotROI = 1;
 
-fitdata = AtomCloudFit('roiRow',[500,700],...
-                       'roiCol',[10,250],...
-                       'roiStep',1,...
-                       'fittype','2comp2d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d
+fitdata = AtomCloudFit('roiRow',[1,1400],...
+                       'roiCol',[1,1400],...
+                       'roiStep',10,...
+                       'fittype','gauss2d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d
 
-detFunc = @(x) (x-8.4985)*12.918;
-imgconsts = AtomImageConstants(atomType,'exposureTime',30e-6,...
-            'pixelsize',6.45e-6,'magnification',0.97,...
-            'freqs',2*pi*[40,23,8],'detuning',detFunc(8.25),...
-            'polarizationcorrection',1.5,'satOD',5);
+imgconsts = AtomImageConstants(atomType,'exposureTime',100e-6,...
+            'pixelsize',5.5e-6,'magnification',0.25,...
+            'freqs',2*pi*[40,23,8],'detuning',0,...
+            'polarizationcorrection',1.5,'satOD',3);
 
-% directory = 'E:\RawImages\2019\01Jan\top';
-directory = 'Z:';
+directory = 'D:\RawImages\2020\12December\';
+% directory = 'Z:';
 
 %% Load raw data
 if ischar(varargin{1}) && strcmpi(varargin{1},'last')

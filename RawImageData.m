@@ -7,8 +7,9 @@ classdef RawImageData < handle
     end
 
     properties(Constant, Hidden=true)
-        SIZE = [1036,1384];
-        DEFAULT_DIRECTORY = 'E:\RawImages\2019\01Jan\top';
+%         SIZE = [1036,1384];
+        SIZE = [1024,1216];
+        DEFAULT_DIRECTORY = 'D:\RawImages\2020\12December\';
         DEFAULT_NUM_IMAGES = 2;
         FILE_EXT = '.raw';
     end
