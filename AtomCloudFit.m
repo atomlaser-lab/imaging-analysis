@@ -62,6 +62,8 @@ classdef AtomCloudFit < handle
             switch v
                 case 'none'
                     self.fittype = 'none';
+                case 'sum'
+                    self.fittype = 'sum';
                 case 'gauss1d'
                     self.fittype = 'gauss1d';
                 case {'twocomp1d','2comp1d'}
@@ -153,7 +155,7 @@ classdef AtomCloudFit < handle
             end
 
             switch self.fittype
-                case 'none'
+                case {'none','sum'}
                     self.params = CloudParameters();
                 case 'gauss1d'
                     [px,self.xfit] = self.fitGauss1D(self.x,self.xdata,ex);
