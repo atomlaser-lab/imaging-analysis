@@ -366,8 +366,9 @@ classdef AtomCloudFit < handle
             if nargin < 4
                 includeRotation = false;
             end
-            options = optimset('Display','off', 'MaxFunEvals',100000, 'TolFun', 1e-9, 'TolX', 1e-9);
-            lb = [0,0,0,0,0,-1e6,-1e6,-10];ub = [10,1,1,1,1,1e6,1e6,10];
+            options = optimset('Display','off', 'MaxFunEvals',10000, 'TolFun', 1e-7, 'TolX', 1e-6);
+            lb = [0,0,0,0,0,-0.1/range(x),-0.1/range(y),-0.25];
+            ub = [10,max(x),range(x)/2,max(y),range(y)/2,0.1/range(x),0.1/range(y),0.25];
             gx = AtomCloudFit.guessGaussParams(x,sum(z,1));
             gy = AtomCloudFit.guessGaussParams(y,sum(z,2));
             amp = max(z(:));
