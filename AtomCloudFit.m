@@ -245,7 +245,7 @@ classdef AtomCloudFit < handle
         function guess = guessGaussParams(x,y)
             % Estimate of fitting params...
             Az = min(y);
-            [Max,I] = max(y);
+            [Max,I] = max(smooth(y,7));
             Bz = Max - Az;
             Cz = x(I);
             tmp=y-Az;
