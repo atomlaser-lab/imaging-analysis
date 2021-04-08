@@ -7,7 +7,7 @@ col1 = 'b.-';
 col2 = 'r--';
 dispOD = [0,0.5];
 plotOpt = 0;
-plotROI = 1;
+plotROI = 0;
 
 fitdata = AtomCloudFit('roiRow',[301,601],...
                        'roiCol',[301,601],...
@@ -56,7 +56,7 @@ for jj = 1:numImages
     cloud(jj).makeImage;
 %     cloud(jj).fitdata.makeFitObjects(cloud(jj).x,cloud(jj).y,cloud(jj).image);
     cloud(jj).fit([],tof,'y');
-%     cloud(jj).fit([],tof,'y',2);
+%     cloud(jj).fit([],tof,'y',3);
         
     %% Plotting
     if plotOpt

@@ -47,7 +47,7 @@ classdef AbsorptionImage < handle
             end
         end
 
-        function self = makeImage(self)
+        function self = makeImage(self,exRegion)
             c = self.constants;
             r = self.raw;
             Nsat = c.satN;
@@ -61,6 +61,13 @@ classdef AbsorptionImage < handle
                 error('Image sets with %d images are unsupported',size(r.images,3));
             end
 
+            if nargin == 2 
+                imgWithoutAtoms = AbsorptionImage.match(imgWithAtoms,imgWithoutAtoms,exRegion);
+            elseif ~isempty(self.fitdata.roiRow) && ~ isempty(self.fitdata.roiCol)
+                exRegion = {self.fitdata.roiRow(1):self.fitdata.roiRow(2),self.fitdata.roiCol(1):self.fitdata.roiCol(2)};
+                exRegion(2,:) = {1:size(self.image,1),1000:size(self.image,2)};
+                imgWithoutAtoms = AbsorptionImage.match(imgWithAtoms,imgWithoutAtoms,exRegion);
+            end
             ODraw = real(-log(imgWithAtoms./imgWithoutAtoms));
             self.image = ODraw;
             self.peakOD = max(max(ODraw));
@@ -74,6 +81,43 @@ classdef AbsorptionImage < handle
             self.imageCorr = c.polarizationCorrection*ODmod + (1 - exp(-ODmod)).*imgWithoutAtoms./Nsat;
             self.x = (c.pixelSize/c.magnification)*(1:size(self.image,2));
             self.y = (c.pixelSize/c.magnification)*(1:size(self.image,1));
+            
+%             self.removeBackground(exRegion);
+        end
+        
+        function self = removeBackground(self,exRegion)
+            options = optimset('Display','off', 'MaxFunEvals',1000, 'TolFun', 1e-9, 'TolX', 1e-9);
+            
+            x = 1:size(self.imageCorr,2); %#ok<*PROP>
+            y = 1:size(self.imageCorr,1);
+            [X,Y] = meshgrid(x,y);
+            
+            lb = [0,min(x),0,min(y),0,-1e6,-1e6,-10];
+            ub = [10,max(x),10*range(x),max(y),10*range(y),1e6,1e6,10];
+            
+            idx = true(size(self.imageCorr));
+            for nn = 1:size(exRegion,1)
+                row = exRegion{nn,1};
+                col = exRegion{nn,2};
+                idx(row,col) = false;
+            end
+            X = X(idx);Y = Y(idx);img = self.imageCorr(idx);
+            s = 20;
+            X = X(1:s:end,1:s:end);
+            Y = Y(1:s:end,1:s:end);
+            img = img(1:s:end);
+            position(:,:,1) = X;
+            position(:,:,2) = Y;
+            guess = [0.1,mean(x),range(x)/2,mean(y),range(y)/2,0,0,0];
+            params = lsqcurvefit(@(c,x) AtomCloudFit.gauss2D(c,x),guess,position,img,lb,ub,options);
+            
+            [X,Y] = meshgrid(x,y);
+            p(:,:,1) = X;
+            p(:,:,2) = Y;
+            bg = AtomCloudFit.gauss2D(params,p);
+            self.image = self.image - bg;
+            self.imageCorr = self.imageCorr - bg;
+            
         end
 
         function self = fit(self,fittype,tof,calcmethod,ex)
@@ -95,34 +139,34 @@ classdef AbsorptionImage < handle
             self.cloudAngle = p.cloudAngle;
             self.T = c.calcTemperature(self.gaussWidth,tof);
             self.peakOD = max(max(f.image));
-
-            if f.is1D()
-                switch lower(calcmethod)
-                    case 'x'
-                        Nth = sqrt(2*pi)*dy*p.gaussAmp(1).*p.gaussWidth(1);
-%                         Nbec = 8/15*pi*p.becAmp(1).*p.becWidth(1)*dy;
-                        Nbec = 16/15*p.becAmp(1).*p.becWidth(1)*dy;
-                    case 'y'
-                        Nth = sqrt(2*pi)*dx*p.gaussAmp(2).*p.gaussWidth(2);
-%                         Nbec = 8/15*pi*p.becAmp(2).*p.becWidth(2)*dx;
-                        Nbec = 16/15*p.becAmp(2).*p.becWidth(2)*dx;
-                    case 'xy'
-                        Nth = sqrt(2*pi*dx*dy)*sqrt(prod(p.gaussAmp.*p.gaussWidth));
-%                         Nbec = 8/15*pi*sqrt(prod(p.becAmp.*p.becWidth))*sqrt(dx*dy);
-                        Nbec = 16/15*sqrt(prod(p.becAmp.*p.becWidth))*sqrt(dx*dy);
-                    otherwise
-                        error('Only allowed calculation methods for number of atoms are ''x'', ''y'', and ''xy''');
-                end
+            
+            if strcmpi(f.fittype,'sum')
+                self.N = sum(sum(f.image))*dx*dy./c.absorptionCrossSection.*(1+4*(c.detuning/c.gamma).^2);
             else
-                Nbec = 2*pi/5*p.becAmp*prod(p.becWidth);
-                Nth = p.gaussAmp*(2*pi*prod(p.gaussWidth));
-                self.peakOD = p.becAmp +p.gaussAmp;
-            end
+                if f.is1D()
+                    switch lower(calcmethod)
+                        case 'x'
+                            Nth = sqrt(2*pi)*dy*p.gaussAmp(1).*p.gaussWidth(1);
+                            Nbec = 16/15*p.becAmp(1).*p.becWidth(1)*dy;
+                        case 'y'
+                            Nth = sqrt(2*pi)*dx*p.gaussAmp(2).*p.gaussWidth(2);
+                            Nbec = 16/15*p.becAmp(2).*p.becWidth(2)*dx;
+                        case 'xy'
+                            Nth = sqrt(2*pi*dx*dy)*sqrt(prod(p.gaussAmp.*p.gaussWidth));
+                            Nbec = 16/15*sqrt(prod(p.becAmp.*p.becWidth))*sqrt(dx*dy);
+                        otherwise
+                            error('Only allowed calculation methods for number of atoms are ''x'', ''y'', and ''xy''');
+                    end
+                else
+                    Nbec = 2*pi/5*p.becAmp*prod(p.becWidth);
+                    Nth = p.gaussAmp*(2*pi*prod(p.gaussWidth));
+                    self.peakOD = p.becAmp +p.gaussAmp;
+                end
 
-%             self.N = (Nth + Nbec)./c.absorptionCrossSection*c.polarizationCorrection.*(1+4*(c.detuning/c.gamma).^2);
-            self.N = (Nth + Nbec)./c.absorptionCrossSection.*(1+4*(c.detuning/c.gamma).^2);
-            self.becFrac = Nbec./(Nth+Nbec);
-            self.PSD = self.calcPSD;
+                self.N = (Nth + Nbec)./c.absorptionCrossSection.*(1+4*(c.detuning/c.gamma).^2);
+                self.becFrac = Nbec./(Nth+Nbec);
+                self.PSD = self.calcPSD;
+            end
         end
 
         function PSD = calcPSD(self)
@@ -139,8 +183,10 @@ classdef AbsorptionImage < handle
 
 
         %% Plotting functions
-        function self = plotROI(self)
-            row = self.fitdata.roiRow;col = self.fitdata.roiCol;
+        function self = plotROI(self,row,col)
+            if nargin == 1
+                row = self.fitdata.roiRow;col = self.fitdata.roiCol;
+            end
             plot([col(1),col(end),col(end),col(1),col(1)],[row(1),row(1),row(end),row(end),row(1)],'r--');
         end
 
@@ -190,18 +236,7 @@ classdef AbsorptionImage < handle
             end
 %             subplot(6,6,[2:5 8:11 14:17 20:23]);
             axes('position',[0.3,0.3,0.6,0.65]);
-            imagesc(self.image,dispOD);
-            axis equal;
-            axis tight;
-            colorbar;
-            colormap(jet);
-            if plotROI
-                xlim(self.fitdata.roiCol);
-                ylim(self.fitdata.roiRow);
-            end
-            imgNums = self.raw.getImageNumbers;
-            strTitle = sprintf('Image: %d',imgNums(1));
-            title(strTitle,'fontsize',14);
+            self.plotAbsData(dispOD,plotROI);
             xlabel(self.makeImageSummary,'fontsize',8);
 
             hold on;
@@ -225,9 +260,12 @@ classdef AbsorptionImage < handle
             axis tight;
             colorbar;
             colormap(jet);
-            if plotROI
+            if ~iscell(plotROI) && plotROI
                 xlim(self.fitdata.roiCol);
                 ylim(self.fitdata.roiRow);
+            elseif iscell(plotROI)
+                xlim(plotROI{2});
+                ylim(plotROI{1});
             end
             imgNums = self.raw.getImageNumbers;
             strTitle = sprintf('Image: %d',imgNums(1));
@@ -269,6 +307,18 @@ classdef AbsorptionImage < handle
             end
             NumberStrTotal(LabelStr=='|')='|';
         end
+        
+        function imgOut = match(img1,img2,exRegion)
+            Filt = ones(size(img1));
+            for nn = 1:size(exRegion,1)
+                row = exRegion{nn,1};
+                col = exRegion{nn,2};
+                Filt(row,col) = 0;
+            end
+            s = fminbnd(@(x) sum(sum(((img1-x*img2).*Filt)).^2),0.1,10);
+            imgOut = img2*s;
+        end
+        
     end
 
 end
