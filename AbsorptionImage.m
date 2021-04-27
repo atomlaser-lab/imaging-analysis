@@ -8,6 +8,7 @@ classdef AbsorptionImage < handle
 
         tof
         N
+        Nsum
         pos
         gaussWidth
         T
@@ -119,6 +120,27 @@ classdef AbsorptionImage < handle
             self.imageCorr = self.imageCorr - bg;
             
         end
+        
+        function N = sum(self,offset)
+            %SUM Computes the number of atoms by summing over the ROI
+            %
+            %   N = C.SUM() Returns the number of atoms as calculated by
+            %   summing over the ROI
+            %
+            %   N = C.SUM(OFFSET) Subtracts the offset OFFSET from the
+            %   image before summing
+            if nargin == 1
+                offset = 0;
+            end
+            f = self.fitdata;
+            c = self.constants;
+            row = f.roiRow(1):f.roiRow(2);
+            col = f.roiCol(1):f.roiCol(2);
+            dx = self.x(2) - self.x(1);
+            dy = self.y(2) - self.y(1);
+            img = self.imageCorr(row,col) - offset;
+            N = sum(sum(img))*dx*dy./c.absorptionCrossSection.*(1+4*(c.detuning/c.gamma).^2);
+        end
 
         function self = fit(self,fittype,tof,calcmethod,ex)
             c = self.constants;
@@ -141,7 +163,8 @@ classdef AbsorptionImage < handle
             self.peakOD = max(max(f.image));
             
             if strcmpi(f.fittype,'sum')
-                self.N = sum(sum(f.image))*dx*dy./c.absorptionCrossSection.*(1+4*(c.detuning/c.gamma).^2);
+                self.N = self.sum();
+                self.Nsum = self.N;
             else
                 if f.is1D()
                     switch lower(calcmethod)
@@ -164,6 +187,7 @@ classdef AbsorptionImage < handle
                 end
 
                 self.N = (Nth + Nbec)./c.absorptionCrossSection.*(1+4*(c.detuning/c.gamma).^2);
+                self.Nsum = self.sum(f.params.offset);
                 self.becFrac = Nbec./(Nth+Nbec);
                 self.PSD = self.calcPSD;
             end
@@ -191,8 +215,9 @@ classdef AbsorptionImage < handle
         end
 
         function str = makeImageSummary(self)
-            str = sprintf('N = %1.3g (%d%%)    OD_{peak} = %1.3g    T_{y} = %3.2f uK',...
+            str{1} = sprintf('N = %1.3g (%d%%)    OD_{peak} = %1.3g    T_{y} = %3.2f uK',...
                 self.N,round(self.becFrac*100),self.peakOD,sqrt(prod(self.T))*1e6);
+            str{2} = sprintf('Nsum = %1.3g',self.Nsum);
         end
 
         function self = plotYData(self,col1,col2)

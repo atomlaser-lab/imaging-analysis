@@ -194,11 +194,11 @@ classdef AtomCloudFit < handle
         end
         
         function y = gauss1D(c,x)
-            y=c(1)+c(2)*exp(-(x-c(3)).^2./(2*c(4).^2))+c(5).*x;
+            y=c(1)+c(2)*exp(-(x-c(3)).^2./(2*c(4).^2))+c(5).*(x-c(3));
         end
 
         function y = bec1D(c,x)
-            y = c(1) + c(2).*(1-((x-c(3))/c(4)).^2).^2.*(abs(x-c(3)) <= c(4))+c(5).*x;
+            y = c(1) + c(2).*(1-((x-c(3))/c(4)).^2).^2.*(abs(x-c(3)) <= c(4))+c(5).*(x-c(3));
         end
         
         function y = tfSpatialFringes(c,x)
@@ -220,14 +220,14 @@ classdef AtomCloudFit < handle
             x = Z(:,:,1); %#ok<*PROP>
             y = Z(:,:,2);
             
-            F = c(1)*exp(-((x-c(2))*cos(c(9))+(y-c(4))*sin(c(9))).^2./(2*c(3).^2)-(-(x-c(2))*sin(c(9))+(y-c(4))*cos(c(9))).^2./(2*c(5).^2))+c(6)*x+c(7)*y+c(8);
+            F = c(1)*exp(-((x-c(2))*cos(c(9))+(y-c(4))*sin(c(9))).^2./(2*c(3).^2)-(-(x-c(2))*sin(c(9))+(y-c(4))*cos(c(9))).^2./(2*c(5).^2))+c(6)*(x-c(2))+c(7)*(y-c(4))+c(8);
         end
 
         function F = gauss2D(c,Z)
             x = Z(:,:,1);
             y = Z(:,:,2);
             
-            F = c(1)*exp(-(x-c(2)).^2./(2*c(3).^2)-(y-c(4)).^2./(2*c(5).^2))+c(6)*x+c(7)*y+c(8);
+            F = c(1)*exp(-(x-c(2)).^2./(2*c(3).^2)-(y-c(4)).^2./(2*c(5).^2))+c(6)*(x-c(2))+c(7)*(y-c(4))+c(8);
         end
         
         function F = bec2D(c,Z)
@@ -243,7 +243,7 @@ classdef AtomCloudFit < handle
             x = (Z(:,:,1)-x0)/xw;
             y = (Z(:,:,2)-y0)/yw;
             s2 = x.^2+y.^2;
-            F = n0*((1-s2).*(s2<=1)).^1.5+linx.*x+liny.*y+offset;
+            F = n0*((1-s2).*(s2<=1)).^1.5+linx.*(x-x0)+liny.*(y-y0)+offset;
         end
         
         function F = twoComp2D(c,Z)
@@ -268,7 +268,7 @@ classdef AtomCloudFit < handle
             Dz2 = mean(x(I2));
             Dztrial = Dz2 - Dz1;
 
-            if length(I1) < 1 || Dztrial < 10e-6,
+            if length(I1) < 1 || Dztrial < 10e-6
                 Dz = 10e-6;
             else
                 Dz = Dztrial;
@@ -293,7 +293,7 @@ classdef AtomCloudFit < handle
             Dz2 = mean(x(I2));
             Dztrial = Dz2 - Dz1;
 
-            if length(I1) < 1 || Dztrial < 5e-6,
+            if length(I1) < 1 || Dztrial < 5e-6
                 Dz = 5e-6;
             else
                 Dz = Dztrial;
