@@ -189,12 +189,20 @@ classdef AtomCloudFit < handle
     end
 
     methods(Static)
+        function opt = getoptions
+            opt = optimset('Display','off', 'MaxFunEvals',1000, 'TolFun', 1e-7, 'TolX', 1e-6);
+        end
+        
         function y = gauss1D(c,x)
             y=c(1)+c(2)*exp(-(x-c(3)).^2./(2*c(4).^2))+c(5).*x;
         end
 
         function y = bec1D(c,x)
             y = c(1) + c(2).*(1-((x-c(3))/c(4)).^2).^2.*(abs(x-c(3)) <= c(4))+c(5).*x;
+        end
+        
+        function y = tfSpatialFringes(c,x)
+            y = c(1) + c(2).*(1-((x-c(3))/c(4)).^2).^2.*(abs(x-c(3)) <= c(4)).*cos(2*pi/c(5)*(x-c(3)));
         end
 
         function y = twoComp1D(c,x)
@@ -314,7 +322,7 @@ classdef AtomCloudFit < handle
             else
                 xex = x;yex = y;
             end
-            options = optimset('Display','off', 'MaxFunEvals',100000, 'TolFun', 1e-9, 'TolX', 1e-9);
+            options = AtomCloudFit.getoptions;
             ub = [1e6,1e8,10,10,1e6];lb = [-1e6,0,-10,0,-1e6];
 
             g = AtomCloudFit.guessGaussParams(xex,yex);
@@ -333,7 +341,7 @@ classdef AtomCloudFit < handle
                 xex = x;yex = y;
             end
             
-            options = optimset('Display','off', 'MaxFunEvals',100000, 'TolFun', 1e-9, 'TolX', 1e-9);
+            options = AtomCloudFit.getoptions;
             ub = [1e6,1e8,10,10,1e6,50,1];lb=[-1e6,0,-10,0,-1e6,0,0];
 
             g = AtomCloudFit.guessGaussParams(xex,yex);
@@ -352,10 +360,30 @@ classdef AtomCloudFit < handle
                 xex = x;yex = y;
             end
             
-            options = optimset('Display','off', 'MaxFunEvals',100000, 'TolFun', 1e-9, 'TolX', 1e-9);
-            ub = [1e6,1e6,1,1,1e6];lb = [-1e6,-1e6,-1,-1,-1e6];
+            options = AtomCloudFit.getoptions;
+            ub = [1e3,1e4,max(x),range(x),1e4];
+            lb = [-1e3,0,min(x),0,-1e4];
             g = AtomCloudFit.guessTFParams(xex,yex);
             guess = [g.offset,g.becAmp,g.pos,g.becWidth,0];
+            func = @(c,x) AtomCloudFit.bec1D(c,x);
+            params = AtomCloudFit.attemptFit(func,guess,xex,yex,lb,ub,options);
+            p = CloudParameters(params(1),params(3),0,0,params(2),params(4));
+            f = func(params,x);
+        end
+        
+        function [p,f] = fitTFSpatialFringes(x,y,ex)
+            x = x(:);y = y(:);
+            if nargin >= 3 && ~isempty(ex)
+                [xex,yex] = AtomCloudFit.exclusion(ex,x,y);
+            else
+                xex = x;yex = y;
+            end
+            
+            options = AtomCloudFit.getoptions;
+            ub = [1e3,1e4,max(x),range(x),5e-3];
+            lb = [-1e3,0,min(x),0,0];
+            g = AtomCloudFit.guessTFParams(xex,yex);
+            guess = [g.offset,g.becAmp,g.pos,g.becWidth,0,g.becWidth/4];
             func = @(c,x) AtomCloudFit.bec1D(c,x);
             params = AtomCloudFit.attemptFit(func,guess,xex,yex,lb,ub,options);
             p = CloudParameters(params(1),params(3),0,0,params(2),params(4));
@@ -366,7 +394,7 @@ classdef AtomCloudFit < handle
             if nargin < 4
                 includeRotation = false;
             end
-            options = optimset('Display','off', 'MaxFunEvals',10000, 'TolFun', 1e-7, 'TolX', 1e-6);
+            options = AtomCloudFit.getoptions;
             lb = [0,0,0,0,0,-0.1/range(x),-0.1/range(y),-0.25];
             ub = [10,max(x),range(x)/2,max(y),range(y)/2,0.1/range(x),0.1/range(y),0.25];
             gx = AtomCloudFit.guessGaussParams(x,sum(z,1));
@@ -401,7 +429,7 @@ classdef AtomCloudFit < handle
         end
         
         function [p,f] = fitTwoComp2D(x,y,z,ex)
-            options = optimset('Display','off', 'MaxFunEvals',100000, 'TolFun', 1e-9, 'TolX', 1e-9);
+            options = AtomCloudFit.getoptions;
             lb = [0,0,0,0,0,-1e6,-1e6,-10,0,0,0];ub = [10,1,1,1,1,1e6,1e6,10,10,1,1];
             gx = AtomCloudFit.guessGaussParams(x,sum(z,1));
             gy = AtomCloudFit.guessGaussParams(y,sum(z,2));
@@ -428,7 +456,7 @@ classdef AtomCloudFit < handle
         end
         
         function [p,f] = fitTF2D(x,y,z,ex)
-            options = optimset('Display','off', 'MaxFunEvals',100000, 'TolFun', 1e-9, 'TolX', 1e-9);
+            options = AtomCloudFit.getoptions;
             lb = [0,0,0,0,0,-1e6,-1e6,-10];ub = [10,1,1,1,1,1e6,1e6,10];
             gx = AtomCloudFit.guessTFParams(x,sum(z,1));
             gy = AtomCloudFit.guessTFParams(y,sum(z,2));
