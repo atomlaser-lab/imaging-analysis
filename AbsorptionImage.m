@@ -63,11 +63,11 @@ classdef AbsorptionImage < handle
             end
 
             if nargin == 2 
-                imgWithoutAtoms = AbsorptionImage.match(imgWithAtoms,imgWithoutAtoms,exRegion);
+%                 imgWithoutAtoms = AbsorptionImage.match(imgWithAtoms,imgWithoutAtoms,exRegion);
             elseif ~isempty(self.fitdata.roiRow) && ~ isempty(self.fitdata.roiCol)
                 exRegion = {self.fitdata.roiRow(1):self.fitdata.roiRow(2),self.fitdata.roiCol(1):self.fitdata.roiCol(2)};
                 exRegion(2,:) = {1:size(self.image,1),1000:size(self.image,2)};
-                imgWithoutAtoms = AbsorptionImage.match(imgWithAtoms,imgWithoutAtoms,exRegion);
+%                 imgWithoutAtoms = AbsorptionImage.match(imgWithAtoms,imgWithoutAtoms,exRegion);
             end
             ODraw = real(-log(imgWithAtoms./imgWithoutAtoms));
             self.image = ODraw;
@@ -140,6 +140,7 @@ classdef AbsorptionImage < handle
             dy = self.y(2) - self.y(1);
             img = self.imageCorr(row,col) - offset;
             N = sum(sum(img))*dx*dy./c.absorptionCrossSection.*(1+4*(c.detuning/c.gamma).^2);
+            N = max(N,0);
         end
 
         function self = fit(self,fittype,tof,calcmethod,ex)
@@ -187,22 +188,36 @@ classdef AbsorptionImage < handle
                 end
 
                 self.N = (Nth + Nbec)./c.absorptionCrossSection.*(1+4*(c.detuning/c.gamma).^2);
-                self.Nsum = self.sum(f.params.offset);
+                if ~f.is1D()
+                    self.Nsum = self.sum(f.params.offset);
+                else
+                    self.Nsum = self.sum;
+                end
                 self.becFrac = Nbec./(Nth+Nbec);
                 self.PSD = self.calcPSD;
             end
         end
 
-        function PSD = calcPSD(self)
+        function PSD = calcPSD(self,N,T)
+            if nargin == 1
+                N = self.N;
+                T = sqrt(prod(self.T));
+                F = self.becFrac;
+            else
+                F = 0;
+            end
             c = self.constants;
-            deBroglie = sqrt(2*pi*const.hbar^2./(c.mass.*const.kb.*sqrt(prod(self.T))));
-            estGaussWidths = sqrt(const.kb*sqrt(prod(self.T))./(c.mass*c.freqs.^2));
+            deBroglie = sqrt(2*pi*const.hbar^2./(c.mass.*const.kb.*T));
+            freqMean = prod(c.freqs)^(1/3);
+            estGaussWidths = sqrt(const.kb*T./(c.mass*freqMean.^2));
 
-            nGauss = (1-self.becFrac)*self.N./((2*pi)^1.5*prod(estGaussWidths));
-            nBEC = (15*self.becFrac*self.N/(8*pi))^(2/5)*(c.mass*prod(c.freqs)^(2/3)/2).^(3/5);
+            nGauss = (1-F)*N./((2*pi)^1.5*estGaussWidths.^3);
+            nBEC = (15*F*N/(8*pi)).^(2/5).*(c.mass*freqMean^2/2).^(3/5);
             n0 = nGauss + nBEC;
-            self.PSD = n0.*deBroglie^3;
-            PSD = self.PSD;
+            PSD = n0.*deBroglie.^3;
+            if nargin == 1
+                self.PSD = PSD;
+            end
        end
 
 
@@ -299,10 +314,10 @@ classdef AbsorptionImage < handle
 
         %% Labelling functions
         function [labelStr,numberStrTotal] = labelOneROI(self)
-            labelCell = {'Image','x width/um','y width/um','Natoms','BEC %','PeakOD','T/nk','PSD'};
-            formatCell = {'% 5d','%0.3e','%0.3e','%0.2e','%0.2f','%0.2e','%0.2e','%0.2e'};
             imgNum = self.raw.getImageNumbers;
-            numberCell = {imgNum(1),self.gaussWidth(1)*1e6,self.gaussWidth(2)*1e6,self.N,self.becFrac*1e2,self.peakOD,sqrt(prod(self.T))*1e9,self.PSD};
+            labelCell = {'Image','x width/um','y width/um','Nsum' ,'Nfit' ,'BEC %','PeakOD','T/nk' ,'PSD'};
+            formatCell = {'% 5d','%0.3e'     ,'%0.3e'     ,'%0.2e','%0.2e','%0.2f','%0.2e' ,'%0.2e','%0.2e'};
+            numberCell = {imgNum(1),self.gaussWidth(1)*1e6,self.gaussWidth(2)*1e6,self.Nsum,self.N,self.becFrac*1e2,self.peakOD,sqrt(prod(self.T))*1e9,self.PSD};
             [labelStr,numberStrTotal] = self.formatLabel(labelCell,formatCell,numberCell);
         end
 

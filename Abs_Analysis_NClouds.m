@@ -5,30 +5,29 @@ tof = 35e-3;
 
 col1 = 'b.-';
 col2 = 'r--';
-dispOD = [0,1];
+dispOD = [0,.25];
 plotOpt = 0;
 plotROI = 0;
 
-roiRow = repmat([575,675],2,1);
-roiCol = [50,114;
-          114,175];
+% roiRow = repmat([575,725],3,1);
+% roiCol = [10,110;
+%           110,180];
+% plotROI = {[575,675],[50,175]};
 
-% roiRow = [200,500;
-%           520,750];
-% roiCol = repmat([550,850],2,1);
+roiRow = [175,450;
+          450,700];
+roiCol = repmat([550,850],2,1);
 
-plotROI = {[575,675],[50,175]};
+% plotROI = {[200,850],[550,850]};
 
 fitdata = AtomCloudFit('roiRow',roiRow(1,:),...
                        'roiCol',roiCol(1,:),...
                        'roiStep',1,...
                        'fittype','tf1d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d
 
-% detFunc = @(x) (x-8.4985)*12.918;
-detFunc = @(x) (x-8.578)*14.8652;
-imgconsts = AtomImageConstants(atomType,'exposureTime',30e-6,...
+imgconsts = AtomImageConstants(atomType,'exposureTime',15e-6,...
             'pixelsize',6.45e-6,'magnification',0.99,...
-            'freqs',2*pi*[40,23,8],'detuning',detFunc(8.25),...
+            'freqs',2*pi*[40,23,8],'detuning',0,...
             'polarizationcorrection',1.0,'satOD',5);
 
 directory = 'E:\RawImages\2021';
