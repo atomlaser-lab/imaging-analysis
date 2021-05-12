@@ -219,7 +219,7 @@ classdef AtomCloudFit < handle
             x = Z(:,:,1);
             y = Z(:,:,2);
             
-            F = c(1)*exp(-(x-c(2)).^2./(2*c(3).^2)-(y-c(4)).^2./(2*c(5).^2))+c(6)*x+c(7)*y+c(8);
+            F = c(1)*exp(-(x-c(2)).^2./(2*c(3).^2)-(y-c(4)).^2./(2*c(5).^2))+c(6)*(x-c(2))+c(7)*(y-c(4))+c(8);
         end
         
         function F = bec2D(c,Z)
@@ -367,8 +367,8 @@ classdef AtomCloudFit < handle
                 includeRotation = false;
             end
             options = optimset('Display','off', 'MaxFunEvals',10000, 'TolFun', 1e-7, 'TolX', 1e-6);
-            lb = [0,0,0,0,0,-0.1/range(x),-0.1/range(y),-0.25];
-            ub = [10,max(x),range(x)/2,max(y),range(y)/2,0.1/range(x),0.1/range(y),0.25];
+            lb = [0,min(x),0,min(y),0,-0.1/range(x),-0.1/range(y),-0.1];
+            ub = [10,max(x),range(x)/2,max(y),range(y)/2,0.1/range(x),0.1/range(y),0.1];
             gx = AtomCloudFit.guessGaussParams(x,sum(z,1));
             gy = AtomCloudFit.guessGaussParams(y,sum(z,2));
             amp = max(z(:));

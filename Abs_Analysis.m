@@ -1,22 +1,24 @@
 function cloud = Abs_Analysis(varargin)
+% function cloud = Abs_Analysis('last')
+resetfolder=pwd;
 
 atomType = 'Rb87';
-tof = 15e-3;
+tof = 13e-3;  %set expansion time here
 
 col1 = 'b.-';
 col2 = 'r--';
-dispOD = [0,0.5];
-plotOpt = 0;
+dispOD = [0,0.4];
+plotOpt = 1;
 plotROI = 0;
 
-fitdata = AtomCloudFit('roiRow',[301,601],...
-                       'roiCol',[301,601],...
-                       'roiStep',10,...
+fitdata = AtomCloudFit('roiRow',[101,951],...
+                       'roiCol',[11,1001],...
+                       'roiStep',5,...
                        'fittype','gauss2d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d, sum
 
 imgconsts = AtomImageConstants(atomType,'exposureTime',100e-6,...
             'pixelsize',5.5e-6,'magnification',0.25,...
-            'freqs',2*pi*[40,23,8],'detuning',8,...
+            'freqs',2*pi*[40,23,8],'detuning',0,... %set detuning here
             'polarizationcorrection',1.5,'satOD',3);
 
 directory = 'D:\RawImages\2020\12December\';
@@ -82,6 +84,27 @@ for jj = 1:numImages
     end
     disp(numStr);
     
+    %% save output to text file
+    %make directory
+    fpathfull = [mfilename('fullpath'),'.m'];
+    [fpath,fname,fext] = fileparts(fpathfull);
+    dstr = datestr(datetime,'YYYY\\mm\\dd\\hh_MM_ss');
+    subfolder = 'data-archive';
+    dirname = sprintf('%s\\%s\\%s',fpath,subfolder,datestr(datetime,'YYYY\\mm\\dd'));
+    if ~isfolder(dirname)
+        mkdir(dirname);
+    end
+    %open directory
+    cd(dirname)
+    %make text file with name=time
+    textname=datestr(datetime,'hh_MM_ss');
+    fileID=fopen(textname,'w');
+    blah='Image  |  x width/um  |  y width/um  |  Natoms  |  BEC  |  PeakOD  |  T/nk  |  PSD\n';
+    
+    %write on file so that it contains data
+    fprintf(fileID,blah);
+    fprintf(fileID,numStr);
+    cd(resetfolder);
 end
 
 end
