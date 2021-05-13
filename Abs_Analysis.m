@@ -18,9 +18,9 @@ fitdata = AtomCloudFit('roiRow',[150,550],...
                        'roiStep',1,...
                        'fittype','tf1d'); 
 
-imgconsts = AtomImageConstants(atomType,'exposureTime',15e-6,...
+imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'pixelsize',6.45e-6,'magnification',0.99,...
-            'freqs',2*pi*[53,53,25],'detuning',0,...
+            'freqs',2*pi*[53,53,25],'exposureTime',15e-6,...
             'polarizationcorrection',1.5,'satOD',5);
 
 directory = 'C:\Users\Ryan\MATLAB\spatial-fringes-analysis\images';
@@ -33,15 +33,7 @@ if nargin == 0 || (nargin == 1 && strcmpi(varargin{1},'last')) || (nargin == 2 &
     % image(s).  In the case of 2 arguments, the second argument specifies
     % the counting backwards from the last image
     %
-    if nargin == 2
-        idx = varargin{2};
-        raw(numel(idx),1) = RawImageData;
-        for nn = 1:numel(idx)
-            raw(nn).load('filenames','last','directory',directory,'index',idx(nn));
-        end
-    else
-        raw = RawImageData('filenames','last','directory',directory);
-    end
+    args = {'files','last','index',varargin{2}};
 else
     %
     % Otherwise, parse arguments as name/value pairs for input into
@@ -50,42 +42,15 @@ else
     if mod(nargin,2) ~= 0
         error('Arguments must occur as name/value pairs!');
     end
-    
-    filenames = {};
-    index = 1;
-    len = 2;
-    for nn = 1:2:nargin
-        v = varargin{nn+1};
-        switch lower(varargin{nn})
-            case {'filenames','files'}
-                filenames = v;
-            case 'directory'
-                directory = v;
-            case {'index','idx'}
-                index = v;
-            case {'length','len'}
-                len = v;
-        end
-    end
-    
-    if ~isempty(filenames)
-        numImages = numel(filenames);
-        raw(numImages,1) = RawImageData;
-        for mm = 1:numImages
-            raw(mm).load('filenames',filenames{mm},'directory',directory);
-        end
-    else
-        numImages = numel(index);
-        raw(numImages,1) = RawImageData;
-        for mm = 1:numImages
-            raw(mm).load('filenames','last','directory',directory,'index',index(mm),'length',len);
-        end
-    end
-    
+    args = varargin; 
 end
+%
+% This loads the raw image sets
+%
+raw = RawImageData.loadImageSets('directory',directory,args{:});
 
 numImages = numel(raw);
-plotOpt = plotOpt || numImages==1;
+plotOpt = plotOpt || numImages == 1;
 
 cloud = AbsorptionImage;
 if numImages > 1
@@ -100,9 +65,7 @@ for jj = 1:numImages
     cloud(jj).fitdata.copy(fitdata);
     cloud(jj).raw.copy(raw(jj));
     cloud(jj).makeImage;
-%     cloud(jj).fitdata.makeFitObjects(cloud(jj).x,cloud(jj).y,cloud(jj).image);
-    cloud(jj).fit([],tof,'y');
-%     cloud(jj).fit([],tof,'y',3);
+    cloud(jj).fit('method','y');
         
     %% Plotting
     if plotOpt

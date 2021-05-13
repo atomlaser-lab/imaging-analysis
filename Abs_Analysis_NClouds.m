@@ -25,34 +25,37 @@ fitdata = AtomCloudFit('roiRow',roiRow(1,:),...
                        'roiStep',1,...
                        'fittype','tf1d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d
 
-imgconsts = AtomImageConstants(atomType,'exposureTime',15e-6,...
+imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'pixelsize',6.45e-6,'magnification',0.99,...
-            'freqs',2*pi*[40,23,8],'detuning',0,...
-            'polarizationcorrection',1.0,'satOD',5);
+            'freqs',2*pi*[53,53,25],'exposureTime',15e-6,...
+            'polarizationcorrection',1.5,'satOD',5);
 
 directory = 'E:\RawImages\2021';
 % directory = 'Z:';
 
 %% Load raw data
-if ischar(varargin{1}) && strcmpi(varargin{1},'last')
-    if numel(varargin) == 1
-        raw = RawImageData('filenames','last','directory',directory);
-    elseif numel(varargin) == 2
-        raw(numel(varargin{2}),1) = RawImageData;
-        for nn = 1:numel(varargin{2})
-            raw(nn).load('filenames','last','directory',directory,'index',varargin{2}(nn));
-        end
-    else
-        error('Unsupported argument list');
-    end
-elseif mod(numel(varargin),2) ~= 0
-    error('Must specify even numbers of file names');
+if nargin == 0 || (nargin == 1 && strcmpi(varargin{1},'last')) || (nargin == 2 && strcmpi(varargin{1},'last') && isnumeric(varargin{2}))
+    %
+    % If no input arguments are given, or the only argument is 'last', or
+    % if the arguments are 'last' and a numeric array, then load the last
+    % image(s).  In the case of 2 arguments, the second argument specifies
+    % the counting backwards from the last image
+    %
+    args = {'files','last','index',varargin{2}};
 else
-    raw(round(numel(varargin)/2),1) = RawImageData;
-    for nn = 1:2:numel(varargin)
-        raw(nn).load('length',2,'filenames',varargin{nn:(nn+1)},'directory',directory);
+    %
+    % Otherwise, parse arguments as name/value pairs for input into
+    % RawImageData
+    %
+    if mod(nargin,2) ~= 0
+        error('Arguments must occur as name/value pairs!');
     end
+    args = varargin; 
 end
+%
+% This loads the raw image sets
+%
+raw = RawImageData.loadImageSets('directory',directory,args{:});
 
 numImages = numel(raw);
 plotOpt = plotOpt || numImages==1;
@@ -72,7 +75,7 @@ for nn = 1:numImages
         cloud(nn,mm).fitdata.setup('roirow',roiRow(mm,:),'roicol',roiCol(mm,:));
         cloud(nn,mm).raw.copy(raw(nn));
         cloud(nn,mm).makeImage(exRegion);
-        cloud(nn,mm).fit([],tof,'x');
+        cloud(nn,mm).fit('method','x');
             
         %% Plotting
         if plotOpt
