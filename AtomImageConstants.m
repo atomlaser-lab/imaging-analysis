@@ -101,13 +101,13 @@ classdef AtomImageConstants < handle
         end
 
         function self = useDefaults(self,atomType)
-            self.pixelSize = 5.5e-6;
-            self.magnification = 0.25;
             %USEDEFAULTS Sets the default values for the object
             %
             %   C = C.USEDEFAULTS(ATOMTYPE) sets the default values for
             %   object C given atom type ATOMTYPE (only 'Rb87' is
             %   supported)
+            self.pixelSize = 5.5e-6;
+            self.magnification = 0.25;
             self.tof = 35e-3;
             self.exposureTime = 30e-6;
             self.photonsPerCount = 9094/(2^16*0.4);

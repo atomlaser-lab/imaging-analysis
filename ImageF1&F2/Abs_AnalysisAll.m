@@ -16,7 +16,7 @@ fitdata = AtomCloudFit('roiRow',[101,951],...
                        'roiStep',5,...
                        'fittype','gauss2d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d, sum
 
-imgconsts = AtomImageConstants(atomType,'exposureTime',100e-6,...
+imgconsts = AtomImageConstants(atomType,'exposureTime',100e-6,'tof',tof,...
             'pixelsize',5.5e-6,'magnification',0.25,...
             'freqs',2*pi*[40,23,8],'detuning',0,... %set detuning here
             'polarizationcorrection',1.5,'satOD',3);
@@ -26,46 +26,16 @@ directory = 'D:\RawImages\2020\12December\';
 
 %% Load raw data
 %
-% Otherwise, parse arguments as name/value pairs for input into
-% RawImageData
+% Check that arguments appear as name/value pairs
 %
 if mod(nargin,2) ~= 0
     error('Arguments must occur as name/value pairs!');
 end
-
-filenames = 'last';
-index = 1;
-len = 3;
 %
-% Loop through variable arguments here
+% This loads the raw image sets
 %
-for nn = 1:2:nargin
-    v = varargin{nn+1};
-    switch lower(varargin{nn})
-        case {'filenames','files'}
-            filenames = v;
-        case 'directory'
-            directory = v;
-        case {'index','idx'}
-            index = v;
-        case {'length','len'}
-            len = v;
-    end
-end
+raw = RawImageData.loadImageSets('directory',directory,varargin{:});
 
-if iscell(filenames) && ~isempty(filenames)
-    numImages = numel(filenames);
-    raw(numImages,1) = RawImageData;
-    for mm = 1:numImages
-        raw(mm).load('filenames',filenames{mm},'directory',directory);
-    end
-else
-    numImages = numel(index);
-    raw(numImages,1) = RawImageData;
-    for mm = 1:numImages
-        raw(mm).load('filenames','last','directory',directory,'index',index(mm),'length',len);
-    end
-end
 
 numImages = numel(raw);
 plotOpt = plotOpt || numImages==1;
@@ -86,7 +56,7 @@ for jj = 1:numImages
         cloud(jj,mm).fitdata.copy(fitdata);
         cloud(jj,mm).raw.copy(raw(jj));
         cloud(jj,mm).makeImage([mm,3]); %3 is always the background image
-        cloud(jj,mm).fit([],tof,'y');
+        cloud(jj,mm).fit('method','y');
 
         %% Plotting
         if plotOpt
