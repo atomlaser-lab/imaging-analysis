@@ -48,27 +48,16 @@ classdef AbsorptionImage < handle
             end
         end
 
-        function self = makeImage(self,exRegion)
+        function self = makeImage(self,imgIndexes)
             c = self.constants;
             r = self.raw;
             Nsat = c.satN;
-            if size(r.images,3) == 3
-                imgWithAtoms = r.images(:,:,1) - r.images(:,:,3);
-                imgWithoutAtoms = r.images(:,:,2) - r.images(:,:,3);
-            elseif size(r.images,3) == 2
-                imgWithAtoms = r.images(:,:,1);
-                imgWithoutAtoms = r.images(:,:,2);
-            else
-                error('Image sets with %d images are unsupported',size(r.images,3));
+            if nargin < 2
+                imgIndexes = [1,2];
             end
+            imgWithAtoms = r.images(:,:,imgIndexes(1));     %Subtract dark here if desired
+            imgWithoutAtoms = r.images(:,:,imgIndexes(2));  %Subtract dark here if desired
 
-            if nargin == 2 
-%                 imgWithoutAtoms = AbsorptionImage.match(imgWithAtoms,imgWithoutAtoms,exRegion);
-            elseif ~isempty(self.fitdata.roiRow) && ~ isempty(self.fitdata.roiCol)
-                exRegion = {self.fitdata.roiRow(1):self.fitdata.roiRow(2),self.fitdata.roiCol(1):self.fitdata.roiCol(2)};
-                exRegion(2,:) = {1:size(self.image,1),1000:size(self.image,2)};
-%                 imgWithoutAtoms = AbsorptionImage.match(imgWithAtoms,imgWithoutAtoms,exRegion);
-            end
             ODraw = real(-log(imgWithAtoms./imgWithoutAtoms));
             self.image = ODraw;
             self.peakOD = max(max(ODraw));
@@ -82,8 +71,7 @@ classdef AbsorptionImage < handle
             self.imageCorr = c.polarizationCorrection*ODmod + (1 - exp(-ODmod)).*imgWithoutAtoms./Nsat;
             self.x = (c.pixelSize/c.magnification)*(1:size(self.image,2));
             self.y = (c.pixelSize/c.magnification)*(1:size(self.image,1));
-            
-%             self.removeBackground(exRegion);
+
         end
         
         function self = removeBackground(self,exRegion)
