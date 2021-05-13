@@ -110,7 +110,7 @@ classdef AtomImageConstants < handle
             self.magnification = 0.25;
             self.tof = 35e-3;
             self.exposureTime = 30e-6;
-            self.photonsPerCount = 9094/(2^16*0.4);
+            self.photonsPerCount = 17e3/(2^16*0.174);
             self.detuning = 0;
             self.gamma = 6.065;
 
