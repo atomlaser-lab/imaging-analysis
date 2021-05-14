@@ -11,8 +11,8 @@ dispOD = [0,0.4];
 plotOpt = 0;
 plotROI = 0;
 
-fitdata = AtomCloudFit('roiRow',[101,951],...
-                       'roiCol',[11,1001],...
+fitdata = AtomCloudFit('roiRow',[1,512],...   %ensure this matches the size in RawImageData
+                       'roiCol',[201,800],...%1216
                        'roiStep',5,...
                        'fittype','gauss2d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d, sum
 
