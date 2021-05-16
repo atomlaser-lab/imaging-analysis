@@ -29,8 +29,12 @@ classdef AtomCloudFit < handle
             %   C = ATOMCLOUDFIT(NAME,VALUE,...) creates an ATOMCLOUDFIT
             %   object using parameters specified as NAME/VALUE pairs.  See
             %   SETUP() for more information
+            self.roiRow = [1,RawImageData.DEFAULT_SIZE(1)];
+            self.roiCol = [1,RawImageData.DEFAULT_SIZE(2)];
+            self.roiStep = 1;
+            self.fittype = 'none';
             if nargin > 0
-                self.setup(varargin{:});
+                self.set(varargin{:});
             end
         end
 
@@ -45,10 +49,10 @@ classdef AtomCloudFit < handle
             end
         end
 
-        function self = setup(self,varargin)
-            %SETUP Sets parameters for the object
+        function self = set(self,varargin)
+            %SET Sets parameters for the object
             %
-            %   C = C.SETUP(NAME,VALUE,...) sets parameters given by NAME
+            %   C = C.SET(NAME,VALUE,...) sets parameters given by NAME
             %   to VALUE for each pair of NAME and VALUE.  Valid options
             %   are 'roirow', 'roicol', 'roistep', and 'fittype'
             if mod(numel(varargin),2) ~= 0

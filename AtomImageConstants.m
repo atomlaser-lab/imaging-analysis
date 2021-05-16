@@ -36,7 +36,7 @@ classdef AtomImageConstants < handle
             %
             if nargin > 0
                 self.useDefaults(atomType);
-                self.setup(atomType,varargin{:});
+                self.set(atomType,varargin{:});
             end
         end
 
@@ -52,10 +52,10 @@ classdef AtomImageConstants < handle
             end
         end
 
-        function self = setup(self,atomType,varargin)
-            %SETUP Sets up ATOMIMAGECONSTANTS based on input arguments
+        function self = set(self,atomType,varargin)
+            %SET Sets up ATOMIMAGECONSTANTS based on input arguments
             %
-            %   C = C.SETUP(ATOMTYPE,NAME,VALUE,...) uses ATOMTYPE ('Rb87')
+            %   C = C.SET(ATOMTYPE,NAME,VALUE,...) uses ATOMTYPE ('Rb87')
             %   and NAME/VALUE pairs to define properties. Allowed values
             %   for NAME are any of the object property names (case
             %   insensitive).

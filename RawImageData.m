@@ -4,7 +4,6 @@ classdef RawImageData < handle
         directory   %Directory to load data from
         files       %Files to load
         images      %Loaded image data
-%         dims        %Dimensions of the images
     end
 
     properties(Constant, Hidden=true)
