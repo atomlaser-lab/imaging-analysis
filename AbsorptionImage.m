@@ -252,7 +252,7 @@ classdef AbsorptionImage < handle
                         case 'y'
                             Nth = sqrt(2*pi)*dx*p.gaussAmp(2).*p.gaussWidth(2);
                             Nbec = 16/15*p.becAmp(2).*p.becWidth(2)*dx;
-                        case 'xy'
+                        case {'xy','yx'}
                             Nth = sqrt(2*pi*dx*dy)*sqrt(prod(p.gaussAmp.*p.gaussWidth));
                             Nbec = 16/15*sqrt(prod(p.becAmp.*p.becWidth))*sqrt(dx*dy);
                         otherwise
@@ -322,7 +322,22 @@ classdef AbsorptionImage < handle
             if nargin == 1
                 self.PSD = PSD;
             end
-       end
+        end
+
+        function varargout = get(self,varargin)
+            %GET Takes a vector of AbsorptionImage objects and returns the
+            %properties as vectors.
+            %
+            %   VARARGOUT = C.GET('NAME1','NAME2',...) takes a vector of
+            %   AbsorptionImage objects C and returns in VARARGOUT the vectors
+            %   of properties 'NAME1', 'NAME2', etc.  Valid values for 'NAME1',
+            %   etc correspond to property names in the AbsorptionImage class.
+            for nn = 1:numel(self)
+                for mm = 1:numel(varargin)
+                    varargout{nn,mm} = self(nn).(varargin{mm});
+                end
+            end
+        end
 
 
         %% Plotting functions

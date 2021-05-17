@@ -8,7 +8,7 @@ The analysis code is broken into four main classes which can be invoked using a 
   - `RawImageData`: describes the raw image data, and has methods for loading that data from a directory
   - `AtomImageConstants`: describes various constants for defining an absorption image, such as detuning, pixel size, etc.
   - `AtomCloudFit`: mainly provides methods for fitting image data to various distributions.
-  - `AbsorptionImage`: the over-arching class that describes the image.  Has three "constant" properties `raw`, `constants`, and `fitdata` which are each instances of `RawImagData`, `AtomImageConstants`, and `AtomCloudFit`, respectively.  Other properties describe the image and the sample, such as peak OD, number of atoms, temperature, etc.
+  - `AbsorptionImage`: the over-arching class that describes the image.  Has three "constant" properties `raw`, `constants`, and `fitdata` which are each instances of `RawImageData`, `AtomImageConstants`, and `AtomCloudFit`, respectively.  Other properties describe the image and the sample, such as peak OD, number of atoms, temperature, etc.
 
 Below is a bare-bones example of how one can read an image set corresponding to a single absorption image and analyze that image:
 ```
@@ -62,4 +62,107 @@ When property values are set at construction, the first argument must be the ato
 
 ### AtomCloudFit Class
 
+We get parameters describing the atomic sample by fitting to the measured spatial distribution, and the fitting procedure is handled by the `AtomCloudFit` class.  Fitting starts by defining a "region-of-interest" or ROI which is a rectangular area defined by two 2-element vectors which give the start and finish of the rows and columns to include.  Additionally, one can set the step size to reduce the number of points used for fitting -- especially useful for 2D fits that can otherwise take a long time.  One can set these parameters using either the syntax
+```
+f = AtomCloudFit;       %Create a blank object
+f.roiRow = [100,500];   %Set the start and end values for the rows in the ROI
+f.roiCol = [250,750];   %Set the start and end values for the columns in the ROI
+f.roiStep = [1,2];      %Set the step size for the row values (first element) and the column values (second element)
+```
+or
+```
+f = AtomCloudFit('roirow',[100,500],'roicol',[250,750],'roistep',[1,2]);
+```
+or
+```
+f = AtomCloudFit;
+f.set('roirow',[100,500],'roicol',[250,750],'roistep',[1,2]);
+```
+All three methods are equivalent.  In the above examples, I have set the ROI to be a region bounded by the rows 100 to 500 and the columns 250 to 750, inclusive.  The image data will be sampled at every row and every second column.  When specifying the step size, if you use a single value that is assumed to apply to both rows and columns.
+
+One can set the fit type/fit function using one of the below syntaxes
+```
+f.fittype = 'gauss2d';
+%OR
+f.set('fittype','gauss2d');
+```
+The valid fit types are
+  - `'none'`: No fit is applied
+  - `'sum'`: No fit is applied, but the image is summed within the ROI and converted into a number of atoms
+  - `'gauss1d'`: Integrates the image data separately along the x and y axes and fits each marginal distribution to a 1D Gaussian with an offset and a linear variation in the backgroud.  The functional form is `z = A*exp(-(x-x0).^2/(2*s^2))+z0+linx*(x-x0)`.
+  - `'tf1d'`: Fits the 1D marginal distributions to a 1D Thomas-Fermi profile of the form `z = A*(1-((x-x0)/s)^2).^2.*(abs(x-x0) < s) + z0 + linx*(x-x0)`.
+  - `'2comp1d'`: Fits a two-component model comprised of a 1D Gaussian and a 1D Thomas-Fermi distribution
+  - `'gauss2d'`: Fits a 2D Gaussian distribution to the image data with a uniform offset and linear variations along x and y in the background
+  - `'tf2d'`: Fits a 2D Thomas-Fermi distribution to the image data with a uniform offset and linear variations in the background.  The form is `z = A*(1-((x-x0)/sx)^2-((y-y0)/sy)^2).^1.5.*abs((((x-x0)/sx)^2+((y-y0)/sy)^2) < 1) + z0 + linx*(x-x0) + liny*(y-y0)`.
+  - `'2comp2d'`: Fits a 2D two-component distribution to the image data
+
+With an ROI and a fit type defined, we now create our fit objects -- the x and y position vectors and the image data, as well as marginal distributions as needed -- and fit the data.  Assuming that the position vectors are labelled `x` and `y` and that the image data is `image` then we use
+```
+f.makeFitObjects(x,y,image);
+f.fit();
+```
+Optionally, you can specify the fit type as the first argument in `f.fit(fittype)` where `fittype` is one of the allowed values above.  The function `f.makeFitObjects()` creates position vectors `f.x` and `f.y` corresponding to the position vectors restricted to the ROI, and marginal distributions `f.xdata` and `f.ydata`.  The 2D image data restricted to the ROI is stored in `f.image`.  Assuming that the fit converges, the resulting parameters are returned as a `CloudParameter` object in the property `f.params`.  The fit function that was used is returned in `f.fitfunc` and the marginal x and y distributions for the fitted data are in `f.xfit` and `f.yfit`.  The object `CloudParameter` has properties
+  - `gaussAmp`: A one or two element vector of the Gaussian fit amplitudes
+  - `becAmp`: A one or two element vector of the BEC fit amplitudes
+  - `offset`: A one or two element vector of the uniform offsets
+  - `lin`: A two element vector of the linear background variation coefficients
+  - `pos`: A two element vector of the center position of the cloud in [x,y] format
+  - `gaussWidth`: A two element vector of the Gaussian widths
+  - `becWidth`: A two element vector of the BEC widths
+  - `cloudAngle`: A one element vector of the rotation angle of the cloud for special 2D Gaussian fits
+The property `f.params` is used for extracting the temperature and number of atoms from the fit.
+
+
+### AbsorptionImage Class
+
+This is the main, over-arching class that describes the entire absorption image and atomic sample.  It has properties `x` and `y` that describe the position on the image, a "raw" optical depth (OD) corresponding to the logarithm of the ratio of input to output light `image`, and a corrected version of that OD in `imageCorr`.  The corrections that are applied are to account for saturation of the OD due to, for instance, off-resonant light, saturation intensity corrections, and corrections due to the polarization of the light.  This corrected optical depth can be integrated over the ROI and the result divided by the absorption cross section and multiplied by a detuning factor to get the total number of atoms in the ROI.
+
+The class has three "immutable" properties `raw`, `constants`, and `fitdata` corresponding to instances of `RawImageData`, `AtomImageConstants`, and `AtomCloudFit` classes.  These properties can only be set at the creation of the instance which means that the data type can never be changed, but since the classes are passed by reference we can still change the internal properties.
+
+Finally, the `AbsorptionImage` class has the following properties for describing the atomic sample:
+  - `N`: the number of atoms extracted from the fit
+  - `Nsum`: the number of atoms extracted by integrating over the ROI
+  - `pos`: the center position of the sample extracted from the fit
+  - `gaussWidth`: the width of the fitted Gaussians
+  - `T`: the temperature of the clouds extracted from the Gaussian widths, the time of flight, and the trap frequencies
+  - `peakOD`: the peak OD in the ROI
+  - `PSD`: the phase-space density of the sample
+  - `becFrac`: the fraction of atoms in the sample that are in the condesate, as extracted from the fits.  Always 0 for the fit type `sum`.
+  - `becWidth`: the width of the condensate
+
+We start by creating an instance of the `AbsorptionImage` class.  If we already have instances of `RawImageData`, `AtomImageConstants`, and `AtomCloudFit` that we want to use, we can call
+```
+c = AbsorptionImage(raw,constants,fitdata);
+```
+where `raw`, `constants`, and `fitdata` are instances of `RawImageData`, `AtomImageConstants`, and `AtomCloudFit, respectively.  We can also create a blank object
+```
+c = AbsorptionImage;
+```
+instead.  If we then copy properties from these other class instances using
+```
+c.raw.copy(raw);
+c.constants.copy(constants);
+c.fitdata.copy(fitdata);
+```
+Note that we can't use `c.raw = raw` since the `raw` property in `AbsorptionImage` has the `SetAccess = immutable` flag set.  Besides, since `RawImageData` is passed by reference, this kind of assignment does not create a copy of `raw`, so if it gets changed someone else it will affect the current instance of `AbsorptionImage`.
+
+Assuming that we have properly set the immutable properties `raw`, `constants`, and `fitdata`, we can create the optical depth maps `c.image` and `c.imageCorr` using the `makeImage()` method
+```
+c.makeImage();
+%OR
+c.makeImage(imgIndexes);
+```
+The first way of calling `makeImage()` assumes that each absorption image is a set of two raw images where the first image is with the atoms and the second image is without the atoms.  The second way of calling the method assumes that the first element in `imgIndexes` points to the raw image that is with the atoms and the second element points to the raw image that is without the atoms.  This can be useful if one is taking multiple images with atoms but only one reference image if, for instance, one is doing multi-state imaging.
+
+With the OD maps in hand, we can now fit our data using
+```
+c.fit();
+%OR
+c.fit('method',calcmethod,'fittype',fittype);
+```
+where the first call type assumes that one wants to use the fit type set in `fitdata`, whereas the second method will overwrite that method.  The parameter `'method'` refers to how the number of atoms is calculated when using 1D distributions.  If set to `'y'`, it calculates the number of atoms from the y marginal distribution, and similarly for `'x'`.  If set to `'xy'` or `'yx'` it calculates from a geometric mean of the two results.
+
+The method `c.fit()` also sums over the region of interest to get the number of atoms `Nsum` (as compared to the fitted number of atoms `N`).  If a 2D fit is used, the uniform offset from the fit is subtracted from the OD data before summation, and this can greatly improve the reliability of calculating interferometer phases in a model-independent way.
+
+Finally, one can plot the absorption image using various plot functions.  Users should look through the plotting functions for more specifics, but one can plot the x or y marginal distributions, the absorption data, or all of the data.
 

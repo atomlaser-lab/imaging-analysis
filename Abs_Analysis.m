@@ -50,7 +50,7 @@ end
 raw = RawImageData.loadImageSets('directory',directory,args{:});
 
 numImages = numel(raw);
-plotOpt = plotOpt || numImages == 1;
+plotOpt = plotOpt || numImages == 1;    %This always enables plotting if only one image is analyzed
 
 cloud = AbsorptionImage;
 if numImages > 1
@@ -60,19 +60,30 @@ if numImages > 1
 end
 
 for jj = 1:numImages
-
+    %
+    % Copy immutable properties
+    %
     cloud(jj).constants.copy(imgconsts);
     cloud(jj).fitdata.copy(fitdata);
     cloud(jj).raw.copy(raw(jj));
+    %
+    % Create image and fit
+    %
     cloud(jj).makeImage;
     cloud(jj).fit('method','y');
         
     %% Plotting
     if plotOpt
         if numImages == 1
+            %
+            % Plot absorption data and marginal distributions when there is only 1 image
+            %
             figure(3);clf;
             cloud(jj).plotAllData(dispOD,col1,col2,plotROI);
         else
+            %
+            % Plot only the absorption data in a grid when there is more than one image
+            %
             if jj == 1
                 figure(3);clf;
                 dimSubPlot=ceil(sqrt(numImages));

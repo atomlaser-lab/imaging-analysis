@@ -8,6 +8,7 @@ classdef AtomCloudFit < handle
         roiStep     %1 or 2 element vector specifying the step size for the ROI to reduce the number of points to fit
         image       %The actual image data, restricted to the ROI
 
+        imgSize     %The size of the image in question
         x           %The x coordinate for the fit
         xdata       %The marginal X distribution
         xfit        %The fit to xdata
@@ -29,6 +30,7 @@ classdef AtomCloudFit < handle
             %   C = ATOMCLOUDFIT(NAME,VALUE,...) creates an ATOMCLOUDFIT
             %   object using parameters specified as NAME/VALUE pairs.  See
             %   SETUP() for more information
+            self.imgSize = RawImageData.DEFAULT_SIZE;
             self.roiRow = [1,RawImageData.DEFAULT_SIZE(1)];
             self.roiCol = [1,RawImageData.DEFAULT_SIZE(2)];
             self.roiStep = 1;
@@ -114,7 +116,7 @@ classdef AtomCloudFit < handle
                 error('Must supply a 2-element vector');
             else
                 v(1) = max(v(1),1);
-                v(2) = min(v(2),RawImageData.DEFAULT_SIZE(1));
+                v(2) = min(v(2),self.imgSize(1));
                 self.roiRow = v;
             end
         end
@@ -128,7 +130,7 @@ classdef AtomCloudFit < handle
                 error('Must supply a 2-element vector');
             else
                 v(1) = max(v(1),1);
-                v(2) = min(v(2),RawImageData.DEFAULT_SIZE(2));
+                v(2) = min(v(2),self.imgSize(2));
                 self.roiCol = v;
             end
         end
@@ -148,6 +150,27 @@ classdef AtomCloudFit < handle
             else
                 error('Must supply a 1 or 2 element vector');
             end
+        end
+
+        function self = checkROI(self)
+            %CHECKROI Checks the ROI to make sure it is within the image bounds
+            %and throws and error if it is not
+            if self.roiRow(1) < 1
+                error('ROI starts at a row (%d) less than 1',self.roiRow(1));
+            elseif self.roiRow(2) > self.imgSize(1)
+                error('ROI ends at a row (%d) larger than the image size of %d. Check the ROI or the value of ''imgSize''',self.roiRow(2),self.imgSize(1));
+            end
+            if self.roiCol(1) < 1
+                error('ROI starts at a column (%d) less than 1',self.roiCol(1));
+            elseif self.roiCol(2) > self.imgSize(2)
+                error('ROI ends at a column (%d) larger than the image size of %d. Check the ROI or the value of ''imgSize''',self.roiCol(2),self.imgSize(2));
+            end
+        end
+
+        function self = coerceROI(self)
+            %COERCEROI Coerces ROI to be within the image bounds
+            self.roiRow = [max(self.roiRow(1),1),min(self.roiRow(2),self.imgSize(1))];
+            self.roiCol = [max(self.roiCol(1),1),min(self.roiCol(2),self.imgSize(2))];
         end
 
         function r = is1D(self)
@@ -187,10 +210,18 @@ classdef AtomCloudFit < handle
             %
             
             %
+            %Coerce ROI to lie within image boudns
+            %
+            self.imgSize = size(image);
+            self.coerceROI();
+            %
             % Restrict input data to the ROI
             %
             [row,col] = self.makeROIVectors;
             self.image = image(row,col);
+            if numel(self.image) == 0
+                error('ROI contains no elements!');
+            end
             self.x = x(col);
             self.xdata = sum(image(row,col),1);
             self.y = y(row);
