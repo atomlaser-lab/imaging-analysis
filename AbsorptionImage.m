@@ -223,6 +223,24 @@ classdef AbsorptionImage < handle
             %
             dx = diff(f.x(1:2));dy = diff(f.y(1:2));
             p = f.params;
+            %
+            % Check that the fit is good
+            %
+            if f.is1D()
+                if p.gaussAmp(1) < 1.5*std(f.residuals.x)
+                    p.gaussAmp(1) = 0;
+                end
+                if p.gaussAmp(2) < 1.5*std(f.residuals.y)
+                    p.gaussAmp(2) = 0;
+                end
+            else
+                if p.gaussAmp < 1.5*std(f.residuals)
+                    p.gaussAmp = 0;
+                end
+            end
+            %
+            % Copy over parameters that don't need extra processing
+            %
             self.gaussWidth = p.gaussWidth;
             self.pos = p.pos;
             self.becWidth = p.becWidth;
