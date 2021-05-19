@@ -24,7 +24,7 @@ The first line creates a blank `AbsorptionImage` object `c`.  The second line lo
 
 The third line sets some constants associated with the image; in this case, we set the time-of-flight `tof` to 30 ms, the exposure time to 30 us, and the detuning to 0 MHz.  The fourth line sets the "region-of-interest" (ROI) to be the rectangular region with corners at (400,400), (400,600), (600,400), and (600,600).  The fit type here is set to a 2D Gaussian distribution.
 
-The fifth line creates the absorption image from the raw data based on the values in the property `c.constants`.  The sixth line fits the absorption data in the ROI using the given fit type.  The last line plots the image, the ROI, and the x and y marginal distributions on a figure along with marginal distributions for the fit.  Information about the atomic sample, such as temperature, number of atoms, position, etc, are stored as properties in `c`.
+The fifth line creates the absorption image from the raw data based on the values in the property `c.constants`.  The sixth line fits the absorption data in the ROI using the given fit type.  The last line plots the image from an OD of 0 to an OD of 3, the ROI, and the x and y marginal distributions on a figure along with marginal distributions for the fit.  Information about the atomic sample, such as temperature, number of atoms, position, etc, are stored as properties in `c`.
 
 ## Description
 
