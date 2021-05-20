@@ -10,6 +10,7 @@ classdef RawImageData < handle
         DEFAULT_SIZE = [1036,1384];
         DEFAULT_DIRECTORY = 'E:\RawImages\2019\01Jan\top';
         DEFAULT_NUM_IMAGES = 2;
+        DEFAULT_BINARY_TYPE = 'mono16';
         FILE_EXT = '.raw';
     end
 
@@ -67,7 +68,7 @@ classdef RawImageData < handle
                 len = self.DEFAULT_NUM_IMAGES;
                 idx = 1;
                 dims = self.DEFAULT_SIZE;
-                dataType = 'mono16';
+                dataType = self.DEFAULT_BINARY_TYPE;
                 for nn = 1:2:numel(varargin)
                     cmd = lower(varargin{nn});
                     switch cmd
@@ -111,7 +112,7 @@ classdef RawImageData < handle
             %   given by DIMS
             %
             if nargin < 2
-                dataType = 'mono16';
+                dataType = self.DEFAULT_BINARY_TYPE;
             end
             if nargin < 3
                 dims = self.DEFAULT_SIZE;
@@ -252,7 +253,7 @@ classdef RawImageData < handle
             len = RawImageData.DEFAULT_NUM_IMAGES;
             directory = RawImageData.DEFAULT_DIRECTORY;
             dims = RawImageData.DEFAULT_SIZE;
-            dataType = 'mono16';
+            dataType = RawImageData.DEFAULT_BINARY_TYPE;
             %
             % Parse inputs
             %

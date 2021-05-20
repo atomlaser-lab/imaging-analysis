@@ -1,19 +1,29 @@
 function cloud = Abs_Analysis(varargin)
 
 atomType = 'Rb87';
-tof = 216.5e-3;
+% tof = varargin{2};
+tof = 216.5e-3;%camera two
 
 col1 = 'b.-';
 col2 = 'r--';
-dispOD = [0,.25];
+dispOD = [0,.4];
 plotOpt = 0;
 plotROI = 0;
+%% Imaging ROI 
+% fitdata = AtomCloudFit('roiRow',[0,1000],...
+%                        'roiCol',[0,1200],...
+%                        'roiStep',2,...
+%                        'fittype','gauss2d');   
 
-% fitdata = AtomCloudFit('roiRow',[450,800],...
-%                        'roiCol',[10,450],...
+% 
+% fitdata = AtomCloudFit('roiRow',[500,720],...
+%                        'roiCol',[0,250],...
 %                        'roiStep',2,...
 %                        'fittype','tf2d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d
-fitdata = AtomCloudFit('roiRow',[150,550],...
+
+%% Imaging Second spot
+
+fitdata = AtomCloudFit('roiRow',[150,850],...
                        'roiCol',[550,850],...
                        'roiStep',1,...
                        'fittype','tf1d'); 
@@ -23,7 +33,7 @@ imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'freqs',2*pi*[53,53,25],'exposureTime',15e-6,...
             'polarizationcorrection',1.5,'satOD',5);
 
-directory = 'C:\Users\Ryan\MATLAB\spatial-fringes-analysis\images';
+directory = 'E:\RawImages\2021';
 
 %% Load raw data
 if nargin == 0 || (nargin == 1 && strcmpi(varargin{1},'last')) || (nargin == 2 && strcmpi(varargin{1},'last') && isnumeric(varargin{2}))
@@ -33,7 +43,12 @@ if nargin == 0 || (nargin == 1 && strcmpi(varargin{1},'last')) || (nargin == 2 &
     % image(s).  In the case of 2 arguments, the second argument specifies
     % the counting backwards from the last image
     %
-    args = {'files','last','index',varargin{2}};
+    if nargin == 1
+        idx = 1;
+    else
+        idx = varargin{2};
+    end
+    args = {'files','last','index',idx};
 else
     %
     % Otherwise, parse arguments as name/value pairs for input into
