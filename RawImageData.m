@@ -4,6 +4,7 @@ classdef RawImageData < handle
         directory   %Directory to load data from
         files       %Files to load
         images      %Loaded image data
+        msg         %Warning/error messages related to loading files
     end
 
     properties(Constant, Hidden=true)
@@ -90,7 +91,7 @@ classdef RawImageData < handle
                 end
                 
                 if ~iscell(filenames) && strcmpi(filenames,'last')
-                    self.files = RawImageData.getLastFilenames(self.directory,len,idx);
+                    [self.files,self.msg] = RawImageData.getLastFilenames(self.directory,len,idx);
                 elseif iscell(filenames)
                     self.files = RawImageData.getFileInfo(self.directory,varargin{2});
                 end
@@ -161,7 +162,7 @@ classdef RawImageData < handle
     end
 
     methods(Static)
-        function f = getLastFilenames(directory,len,idx)
+        function [f,msg] = getLastFilenames(directory,len,idx)
             %GETLASTFILENAMES Gets the last filenames from the directory
             %
             %   F = GETLASTFILENAMES(DIRECTORY,LEN,IDX) looks at directory
@@ -169,6 +170,9 @@ classdef RawImageData < handle
             %   = 1 then it grabs files from END - (LEN - 1) : END.
             %
             %   If IDX is not specified, it assumes that IDX = 1.
+            %
+            %   [F,MSG] = GETLASTFILENAMES(__) returns a warning/error
+            %   message MSG if something goes wrong while loading a file
             
             %
             % Get all file names, sort by date
@@ -194,7 +198,13 @@ classdef RawImageData < handle
                 dates(nn,1) = datenum(f(nn).date);  %This is in number of days since some arbitrary time
             end
             if any(abs(diff(dates))*3600*24 > 3)
-                warning('Set of images may not have been taken together. Time difference of %.3f s',max(abs(diff(dates))));
+                str = sprintf('Set of images may not have been taken together. Time difference of %.3f s',max(abs(diff(dates))));
+                warning(str); %#ok<SPWRN>
+                msg.description = str;
+                msg.status = 'warning';
+            else
+                msg.description = '';
+                msg.status = 'ok';
             end
         end
 
