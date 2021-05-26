@@ -5,27 +5,35 @@ tof = 35e-3;
 
 col1 = 'b.-';
 col2 = 'r--';
-dispOD = [0,5];
+dispOD = [0,.25];
 plotOpt = 0;
 plotROI = 0;
 
+%% In-trap imaging ROI
+
+
 % roiRow = repmat([575,725],3,1);
-roiRow = [600,660;
-          600,660];
-roiCol = [60,110;
-          0,60];
+% roiRow = [600,660;
+%           600,660];
+% roiCol = [60,110;
+%           0,60];
+
 % plotROI = {[575,675],[0,175]};
-% 
-% roiRow = [175,450;
-%           450,700];
-% roiCol = repmat([550,850],2,1);
+
+%% Second Spot Imaging ROI 
+roiRow = [175,450;
+          450,720];
+roiCol = repmat([550,850],2,1);
 
 % plotROI = {[200,850],[550,850]};
 
+
+
+%% Fit data
 fitdata = AtomCloudFit('roiRow',roiRow(1,:),...
                        'roiCol',roiCol(1,:),...
                        'roiStep',1,...
-                       'fittype','tf1d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d
+                       'fittype','tf2d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d
 
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'pixelsize',6.45e-6,'magnification',0.99,...
@@ -43,7 +51,12 @@ if nargin == 0 || (nargin == 1 && strcmpi(varargin{1},'last')) || (nargin == 2 &
     % image(s).  In the case of 2 arguments, the second argument specifies
     % the counting backwards from the last image
     %
-    args = {'files','last','index',varargin{2}};
+    if nargin < 2
+        idx = 1;
+    else
+        idx = varargin{2};
+    end
+    args = {'files','last','index',idx};
 else
     %
     % Otherwise, parse arguments as name/value pairs for input into
@@ -74,9 +87,9 @@ for nn = 1:numImages
     for mm = 1:numClouds
         cloud(nn,mm).constants.copy(imgconsts);
         cloud(nn,mm).fitdata.copy(fitdata);
-        cloud(nn,mm).fitdata.setup('roirow',roiRow(mm,:),'roicol',roiCol(mm,:));
+        cloud(nn,mm).fitdata.set('roirow',roiRow(mm,:),'roicol',roiCol(mm,:));
         cloud(nn,mm).raw.copy(raw(nn));
-        cloud(nn,mm).makeImage(exRegion);
+        cloud(nn,mm).makeImage;
         cloud(nn,mm).fit('method','x');
             
         %% Plotting

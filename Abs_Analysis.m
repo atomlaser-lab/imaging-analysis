@@ -6,7 +6,7 @@ tof = 216.5e-3;%camera two
 
 col1 = 'b.-';
 col2 = 'r--';
-dispOD = [0,.4];
+dispOD = [0,.25];
 plotOpt = 0;
 plotROI = 0;
 %% Imaging ROI 
@@ -23,10 +23,10 @@ plotROI = 0;
 
 %% Imaging Second spot
 
-fitdata = AtomCloudFit('roiRow',[150,850],...
+fitdata = AtomCloudFit('roiRow',[180,500],...
                        'roiCol',[550,850],...
                        'roiStep',1,...
-                       'fittype','tf1d'); 
+                       'fittype','tf2d'); 
 
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'pixelsize',6.45e-6,'magnification',0.99,...
@@ -43,7 +43,7 @@ if nargin == 0 || (nargin == 1 && strcmpi(varargin{1},'last')) || (nargin == 2 &
     % image(s).  In the case of 2 arguments, the second argument specifies
     % the counting backwards from the last image
     %
-    if nargin == 1
+    if nargin < 2
         idx = 1;
     else
         idx = varargin{2};
