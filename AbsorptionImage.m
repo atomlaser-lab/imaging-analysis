@@ -352,7 +352,7 @@ classdef AbsorptionImage < handle
             %   etc correspond to property names in the AbsorptionImage class.
             for nn = 1:numel(self)
                 for mm = 1:numel(varargin)
-                    varargout{nn,mm} = self(nn).(varargin{mm});
+                    varargout{mm}(nn,:) = self(nn).(varargin{mm});
                 end
             end
         end
