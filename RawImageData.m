@@ -4,7 +4,10 @@ classdef RawImageData < handle
         directory   %Directory to load data from
         files       %Files to load
         images      %Loaded image data
-        msg         %Warning/error messages related to loading files
+    end
+    
+    properties(SetAccess = protected)
+        status     %Status information about raw image data
     end
 
     properties(Constant, Hidden=true)
@@ -25,6 +28,7 @@ classdef RawImageData < handle
             %   RAW = RAWIMAGEDATA(NAME,VALUE,...) creates an object RAW
             %   and loads data based on the NAME/VALUE pairs given in the
             %   function call
+            self.status = ImageAnalysisErrorHandler;
             if nargin == 0
                 return
             elseif nargin > 0 && mod(numel(varargin),2) ~= 0
@@ -59,8 +63,9 @@ classdef RawImageData < handle
             %   data type to use
             %
             %   'filenames' should be given as a cell array of file names.
-            %   If multiple image sets are being loaded, it should be a
-            %   cell array of cell arrays.
+            %   Alternatively, it can be an array of file structures in the
+            %   format returned by the DIR function and stored as the
+            %   normal property RAWIMAGEDATA.FILES
             %
             %   'datatype' can be 'mono8', 'mono16', or 'raw8'
             if mod(numel(varargin),2) == 0
@@ -91,9 +96,11 @@ classdef RawImageData < handle
                 end
                 
                 if ~iscell(filenames) && strcmpi(filenames,'last')
-                    [self.files,self.msg] = RawImageData.getLastFilenames(self.directory,len,idx);
+                    [self.files,self.status] = RawImageData.getLastFilenames(self.directory,len,idx);
                 elseif iscell(filenames)
-                    self.files = RawImageData.getFileInfo(self.directory,varargin{2});
+                    self.files = RawImageData.getFileInfo(self.directory,filenames);
+                elseif isstruct(filenames)
+                    self.files = filenames;
                 end
                 self.readImages(dataType,dims);
             end
@@ -193,18 +200,12 @@ classdef RawImageData < handle
             % This checks that the files were taken together by comparing
             % the times at which they were taken
             %
-            dates = zeros(numel(f),1);
-            for nn = 1:numel(f)
-                dates(nn,1) = datenum(f(nn).date);  %This is in number of days since some arbitrary time
-            end
-            if any(abs(diff(dates))*3600*24 > 3)
-                str = sprintf('Set of images may not have been taken together. Time difference of %.3f s',max(abs(diff(dates))));
+            if any(abs(diff([f.datenum]))*3600*24 > 3)
+                str = sprintf('Set of images may not have been taken together. Time difference of %.3f s',max(abs(diff([f.datenum]))));
                 warning(str); %#ok<SPWRN>
-                msg.description = str;
-                msg.status = 'warning';
+                msg = ImageAnalysisErrorHandler(ImageAnalysisErrorHandler.STATUS_WARNING,str);
             else
-                msg.description = '';
-                msg.status = 'ok';
+                msg = ImageAnalysisErrorHandler(ImageAnalysisErrorHandler.STATUS_OK);
             end
         end
 
@@ -243,6 +244,10 @@ classdef RawImageData < handle
             %   corresponding to one image set.  If more than one image
             %   set, it should be a cell array of cell arrays.
             %
+            %   'filenames' can also be a cell array of struct arrays (1
+            %   cell element for each image set) or an array of structs
+            %   that containing file information
+            %
             %   'length' is the length of each image set.
             %
             %   'directory' is the directory from which to load images
@@ -258,7 +263,7 @@ classdef RawImageData < handle
             %
             % Set default values
             %
-            filenames = {};
+            filenames = 'last';
             index = 1;
             len = RawImageData.DEFAULT_NUM_IMAGES;
             directory = RawImageData.DEFAULT_DIRECTORY;
@@ -284,26 +289,45 @@ classdef RawImageData < handle
                         dataType = v;
                 end
             end
-
-            if ~isempty(filenames) && ~(ischar(filenames) && strcmpi(filenames,'last'))
+            
+            if ischar(filenames) && strcmpi(filenames,'last')
                 %
-                % As long as filenames is not 'last' and has more than one
-                % element, treat it as a cell array and load data
-                %
-                numImages = numel(filenames);
-                raw(numImages,1) = RawImageData;
-                for mm = 1:numImages
-                    raw(mm).load('filenames',filenames{mm},'directory',directory,'len',len,'dims',dims,'datatype',dataType);
-                end
-            else
-                %
-                % Otherwise, load the last images according to index
+                % Load the last images according to the index
                 %
                 numImages = numel(index);
                 raw(numImages,1) = RawImageData;
                 for mm = 1:numImages
                     raw(mm).load('filenames','last','directory',directory,'index',index(mm),'len',len,'dims',dims,'datatype',dataType);
                 end
+            elseif iscell(filenames)
+                %
+                % Load files as a cell array
+                %
+                numImages = numel(filenames);
+                raw(numImages,1) = RawImageData;
+                for mm = 1:numImages
+                    raw(mm).load('filenames',filenames{mm},'directory',directory,'len',len,'dims',dims,'datatype',dataType);
+                end
+            elseif isstruct(filenames)
+                %
+                % If files are as a array of structures and the structures
+                % have a name, then load as array.  First check to make
+                % sure the "name" field exists
+                %
+                if ~isfield(filenames(1),'name')
+                    error('File structures must have the ''name'' field');
+                end
+                numImages = floor(numel(filenames)/len);
+                raw(numImages,1) = RawImageData;
+                for mm = 1:numImages
+                    fileidx = ((mm-1)*len+1):(mm*len);
+                    raw(mm).load('filenames',filenames(fileidx),'directory',directory,'len',len,'dims',dims,'datatype',dataType);
+                end
+            else
+                %
+                % Throw an error since this is an unsupported mode
+                %
+                error('Unsupported filename input type!');
             end
         end
     end
