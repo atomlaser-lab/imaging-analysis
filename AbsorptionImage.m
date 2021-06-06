@@ -20,6 +20,7 @@ classdef AbsorptionImage < handle
         y               %y position
         image           %raw absorption image: -log(imgWithAtoms/imgWithoutAtoms)
         imageCorr       %corrected absorption image
+        imgidxs         %Indicies in raw image data corresponding to data used for this instance
         %
         % Atomic sample properties
         %
@@ -96,11 +97,13 @@ classdef AbsorptionImage < handle
             % use the default (first and second raw images) or use the
             % user-supplied indices.
             %
-            if nargin < 2
-                imgIndexes = [1,2];
+            if nargin < 2 && isempty(self.imgidxs)
+                self.imgidxs = [1,2];
+            elseif nargin >= 2
+                self.imgidxs = imgIndexes;
             end
-            imgWithAtoms = r.images(:,:,imgIndexes(1));     %Subtract dark here if desired
-            imgWithoutAtoms = r.images(:,:,imgIndexes(2));  %Subtract dark here if desired
+            imgWithAtoms = r.images(:,:,self.imgidxs(1));     %Subtract dark here if desired
+            imgWithoutAtoms = r.images(:,:,self.imgidxs(2));  %Subtract dark here if desired
             %
             % Create the uncorrected optical depth map and get peak OD.
             % Set NaNs and Infs to zero
@@ -559,10 +562,97 @@ classdef AbsorptionImage < handle
             numberCell = {imgNum(1),self.gaussWidth(1)*1e6,self.gaussWidth(2)*1e6,self.Nsum,self.N,self.becFrac*1e2,self.peakOD,sqrt(prod(self.T))*1e9,self.PSD};
             [labelStr,numberStrTotal] = self.formatLabel(labelCell,formatCell,numberCell);
         end
+        
+        %% Saving and loading functions
+        function s = struct(self)
+            %STRUCT Creates a struct from the AbsorptionImage object
+            %
+            %   S = C.STRUCT() Creates a struct from the AbsorptionImage
+            %   object C
+            if numel(self) > 1
+                for nn = 1:numel(self)
+                    s(nn,1) = struct(self(nn)); %#ok<*AGROW>
+                end
+            else
+                s.x = self.x;
+                s.y = self.y;
+                s.image = self.image;
+                s.imageCorr = self.imageCorr;
+                s.imgidxs = self.imgidxs;
+                s.N = self.N;
+                s.Nsum = self.Nsum;
+                s.pos = self.pos;
+                s.gaussWidth = self.gaussWidth;
+                s.T = self.T;
+                s.peakOD = self.peakOD;
+                s.PSD = self.PSD;
+                s.cloudAngle = self.cloudAngle;
+                s.becFrac = self.becFrac;
+                s.becWidth = self.becWidth;
+                s.raw = struct(self.raw);
+                s.constants = struct(self.constants);
+                s.fitdata = struct(self.fitdata);
+            end
+        end
+        
+        function s = saveobj(self)
+            if numel(self) > 1
+                for nn = 1:numel(self)
+                    s(nn,1) = saveobj(self(nn));
+                end
+            else
+                s = self.struct;
+                %
+                % Remove unnecessary data
+                %
+                s.x = [];
+                s.y = [];
+                s.image = [];
+                s.imageCorr = [];
+                s.raw.images = uint16(s.raw.images);
+                s.fitdata.image = [];
+                s.fitdata.residuals = [];
+            end
+        end
 
     end
 
     methods(Static)
+        function self = loadobj(a)
+            %LOADOBJ Converts simpler object into ABSORPTIONIMAGE
+            %
+            %   C = LOADOBJ(A) converts simpler object A into instance C
+            if numel(a) > 1
+                for nn = 1:numel(a)
+                    self(nn) = AbsorptionImage.loadobj(a(nn));
+                end
+            else
+                self = AbsorptionImage;
+                raw = RawImageData.loadobj(a.raw);
+                c = AtomImageConstants.loadobj(a.constants);
+                f = AtomCloudFit.loadobj(a.fitdata);
+                self.raw.copy(raw);
+                self.constants.copy(c);
+                self.fitdata.copy(f);
+
+                self.makeImage;
+                [row,col] = self.fitdata.makeROIVectors;
+                self.fitdata.image = self.imageCorr(row,col);
+                %
+                % Properties
+                %
+                self.N = a.N;
+                self.Nsum = a.Nsum;
+                self.pos = a.pos;
+                self.gaussWidth = a.gaussWidth;
+                self.T = a.T;
+                self.peakOD = a.peakOD;
+                self.PSD = a.PSD;
+                self.cloudAngle = a.cloudAngle;
+                self.becFrac = a.becFrac;
+                self.becWidth = a.becWidth;
+            end
+        end
         function [LabelStr,NumberStrTotal] = formatLabel(LabelCell,FormatCell,NumberCell)
             %FORMATLABEL Uses input labels, formats, and values to create a
             %nice label that can be printed to the command line

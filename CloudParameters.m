@@ -88,8 +88,39 @@ classdef CloudParameters
                 error('Inputs must either be no inputs, two CloudParameters objects, or name/value pairs');
             end
         end
+        
+        function s = struct(self)
+            %STRUCT Returns a structure version of the class instance
+            %
+            %   S = CP.STRUCT() Returns a struct version of CLOUDPARAMETERS
+            %   instance CP
+            p = properties(self);
+            for nn = 1:numel(p)
+                s.(p{nn}) = self.(p{nn});
+            end
+        end
+        
+        function s = saveobj(self)
+            %SAVEOBJ Returns a version of the object that is easier to save
+            %
+            %   S = CP.SAVEOBJ() returns a structure S that represents
+            %   instance CP
+            s = self.struct;
+        end
     end
-
-
-
+    
+    methods(Static)
+        function b = loadobj(a)
+            %LOADOBJ Converts saved structure A into class instance B
+            %
+            %   CONST = LOADOBJ(A) Converts saved structure A representing
+            %   CLOUDPARAMTERS object into proper instance CONST
+            
+            b = CloudParameters;
+            p = fields(a);
+            for nn = 1:numel(p)
+                b.(p{nn}) = a.(p{nn});
+            end
+        end
+    end
 end

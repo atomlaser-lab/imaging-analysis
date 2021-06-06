@@ -166,9 +166,38 @@ classdef RawImageData < handle
                 imgNum(nn) = str2double(tmp{1});
             end
         end
+        
+        function s = struct(self)
+            %STRUCT Converts object instance into structure
+            %
+            %   S = RAW.STRUCT() converts object RAW into structure S
+            s.directory = self.directory;
+            s.files = self.files;
+            s.images = self.images;
+        end
+        
+        function s = saveobj(self)
+            %SAVEOBJ Saves a simpler struct representation of the class
+            %
+            %   S = RAW.SAVEOBJ() creates simpler structure S for saving
+            %   object RAW
+            s = self.struct;
+            s.images = uint16(s.images);
+        end
     end
 
     methods(Static)
+        function b = loadobj(a)
+            %LOADOBJ Converts saved structure into object instance
+            %
+            %   RAW = LOADOBJ(A) converts saved structure A representing an
+            %   instance of RAWIMAGEDATA into object instance RAW
+            b = RawImageData;
+            b.directory = a.directory;
+            b.files = a.files;
+            b.images = double(a.images);
+        end
+        
         function [f,msg] = getLastFilenames(directory,len,idx)
             %GETLASTFILENAMES Gets the last filenames from the directory
             %

@@ -5,7 +5,7 @@ tof = 35e-3;
 
 col1 = 'b.-';
 col2 = 'r--';
-dispOD = [0,.25];
+dispOD = [0,2.5];
 plotOpt = 0;
 plotROI = 0;
 
@@ -13,17 +13,19 @@ plotROI = 0;
 
 
 % roiRow = repmat([575,725],3,1);
-% roiRow = [600,660;
-%           600,660];
-% roiCol = [60,110;
-%           0,60];
+roiRow = [400,660;
+          900,660];
+roiCol = [60,1200;
+          0,60];
+      
+      
 
 % plotROI = {[575,675],[0,175]};
 
 %% Second Spot Imaging ROI 
-roiRow = [175,450;
-          450,720];
-roiCol = repmat([550,850],2,1);
+% roiRow = [175,450;
+%           450,720];
+% roiCol = repmat([550,850],2,1);
 
 % plotROI = {[200,850],[550,850]};
 

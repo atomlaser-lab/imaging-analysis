@@ -301,10 +301,55 @@ classdef AtomCloudFit < handle
                     error('Fit type %s not supported',self.fittype);
             end
         end
+        
+        %% Saving and loading functions
+        function s = struct(self)
+            %STRUCT Creates a structure from the object instance
+            %
+            %   S = F.STRUCT() creates a structure S from the object
+            %   instance F
+            s.roiRow = self.roiRow;
+            s.roiCol = self.roiCol;
+            s.roiStep = self.roiStep;
+            s.image = self.image;
+            s.imgSize = self.imgSize;
+            s.x = self.x;
+            s.xdata = self.xdata;
+            s.xfit = self.xfit;
+            s.y = self.y;
+            s.ydata = self.ydata;
+            s.yfit = self.yfit;
+            s.ex = self.ex;
+            s.fittype = self.fittype;
+            s.fitfunc = self.fitfunc;
+            s.residuals = self.residuals;
+            s.params = self.params.struct;
+        end
+        
+        function s = saveobj(self)
+            %SAVEOBJ Saves an instance of the ATOMCLOUDFIT class as a
+            %simpler structure
+            %
+            %   S = F.SAVEOBJ() saves instance F as simpler structure S
+            s = self.struct;
+        end
 
     end
 
     methods(Static)
+        function b = loadobj(a)
+            %LOADOBJ Converts saved structure into class instance
+            %
+            %   F = LOADOBJ(A) converts simpler structure A into proper
+            %   instance of ATOMCLOUDFIT F
+            p = fields(a);
+            b = AtomCloudFit;
+            for nn = 1:numel(p)
+                b.(p{nn}) = a.(p{nn});
+            end
+            b.params = CloudParameters.loadobj(b.params);
+        end
+        
         function opt = getoptions
             %GETOPTIONS creates options object with default parameters
             %

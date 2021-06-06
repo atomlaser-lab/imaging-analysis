@@ -153,7 +153,40 @@ classdef AtomImageConstants < handle
             %   NSAT
             Nsat = self.Isat.*(self.pixelSize/self.magnification)^2*self.exposureTime/(const.h*const.c/self.wavelength)/self.photonsPerCount*(1+4*(self.detuning/self.gamma).^2);
         end
+        
+        function s = struct(self)
+            %STRUCT Creates a struct from the AtomImageConstants object
+            %
+            %   S = CONST.STRUCT() Creates a struct S from the object CONST
+            p = properties(self);
+            for nn = 1:numel(p)
+                s.(p{nn}) = self.(p{nn});
+            end
+        end
+        
+        function s = saveobj(self)
+            %SAVEOBJ Returns a version of the object that is easier to save
+            %
+            %   S = CONST.SAVEOBJ() Returns struct S representing object
+            %   CONST
+            s = self.struct;
+        end
 
+    end
+    
+    methods(Static)
+        function b = loadobj(a)
+            %LOADOBJ Converts saved structure A into class instance B
+            %
+            %   CONST = LOADOBJ(A) Converts saved structure A representing
+            %   ATOMIMAGECONSTANTS object into proper instance CONST
+            
+            b = AtomImageConstants;
+            p = fields(a);
+            for nn = 1:numel(p)
+                b.(p{nn}) = a.(p{nn});
+            end
+        end
     end
 
 end
