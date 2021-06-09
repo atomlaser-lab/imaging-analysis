@@ -753,10 +753,10 @@ classdef AtomCloudFit < handle
             %   than EX
             %
             options = AtomCloudFit.getoptions;
-            xmin = min(x) + 0.25*range(x);
-            xmax = max(x) - 0.25*range(x);
-            ymin = min(y) + 0.25*range(y);
-            ymax = max(y) - 0.25*range(y);
+            xmin = min(x) + 0.15*range(x);
+            xmax = max(x) - 0.15*range(x);
+            ymin = min(y) + 0.15*range(y);
+            ymax = max(y) - 0.15*range(y);
             lb = [0 ,xmin,2*abs(diff(x(1:2))),ymin,2*abs(diff(y(1:2))),-0.1/range(x),-0.1/range(y),-0.1];
             ub = [10,xmax,range(x)/2         ,ymax,range(y)/2         ,+0.1/range(x),+0.1/range(y),+0.1];
             gx = AtomCloudFit.guessTFParams(x,sum(z,1));

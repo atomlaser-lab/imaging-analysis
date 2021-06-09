@@ -5,36 +5,40 @@ tof = 35e-3;
 
 col1 = 'b.-';
 col2 = 'r--';
-dispOD = [0,2.5];
+dispOD = [0,0.25];
 plotOpt = 0;
 plotROI = 0;
 
 %% In-trap imaging ROI
-
-
 % roiRow = repmat([575,725],3,1);
-roiRow = [400,660;
-          900,660];
-roiCol = [60,1200;
-          0,60];
+% roiRow = [400,660;
+%           900,660];
+% roiCol = [60,1200;
+%           0,60];
       
-      
+% roiRow = repmat([550,700],3,1);
+% roiCol = [50,200;
+%           200,283;
+%           283,400];
 
 % plotROI = {[575,675],[0,175]};
 
 %% Second Spot Imaging ROI 
-% roiRow = [175,450;
-%           450,720];
-% roiCol = repmat([550,850],2,1);
+roiRow = [150,460;
+          460,750];
+roiCol = repmat([550,850],2,1);
 
 % plotROI = {[200,850],[550,850]};
 
-
+% roiRow = [50,320;
+%           320,525;
+%           525,750];
+% roiCol = repmat([550,900],3,1);
 
 %% Fit data
 fitdata = AtomCloudFit('roiRow',roiRow(1,:),...
                        'roiCol',roiCol(1,:),...
-                       'roiStep',1,...
+                       'roiStep',2,...
                        'fittype','tf2d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d
 
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
@@ -78,8 +82,14 @@ numImages = numel(raw);
 plotOpt = plotOpt || numImages==1;
 
 numClouds = size(roiCol,1);
-cloud(numImages,numClouds) = AbsorptionImage;
-
+% cloud(numImages,numClouds) = AbsorptionImage;
+cloud = AbsorptionImage.empty;
+for nn = 1:numImages
+    for mm = 1:numClouds
+        cloud(nn,mm) = AbsorptionImage;
+    end
+end
+    
 exRegion = cell(numClouds,2);
 for mm = 1:numClouds
     exRegion(mm,:) = {roiRow(mm,1):roiRow(mm,2),roiCol(mm,1):roiCol(mm,2)};
@@ -113,8 +123,8 @@ for nn = 1:numImages
         end
 
         %% Print summaries
-        [labelStr,numStr]=cloud(nn,mm).labelOneROI;
-        if nn == 1
+        [labelStr,numStr] = cloud(nn,mm).labelOneROI;
+        if nn == 1 && mm == 1
             disp(labelStr);
         end
         disp(numStr);

@@ -36,6 +36,15 @@ classdef ImageAnalysisErrorHandler < handle
             end
         end
         
+        function self = copy(self,obj)
+            %COPY Copies properties of the class
+            %
+            %   ERR = ERR.COPY(OBJ) Copies the properties from class
+            %   instance OBJ to current instance ERR.
+            self.status = obj.status;
+            self.message = obj.message;
+        end
+        
         function r = ok(self)
             %OK Returns true if no error or warning, false otherwise
             %

@@ -45,10 +45,11 @@ classdef RawImageData < handle
             %   RAW = COPY(OBJ) copies the properties of OBJ to the current
             %   object RAW
             %
-            p = properties(self);
+            p = {'directory','files','images'};
             for nn = 1:numel(p)
                 self.(p{nn}) = obj.(p{nn});
             end
+            self.status.copy(obj.status);
         end
         
         function self = load(self,varargin)

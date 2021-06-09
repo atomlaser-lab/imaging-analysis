@@ -6,14 +6,14 @@ tof = 35e-3;%camera two
 
 col1 = 'b.-';
 col2 = 'r--';
-dispOD = [0,3.5];
+dispOD = [0,0.5];
 plotOpt = 0;
-plotROI = 1;
+plotROI = 0;
 %% Imaging ROI 
-fitdata = AtomCloudFit('roiRow',[400,800],...
-                       'roiCol',[100,1000],...
-                       'roiStep',2,...
-                       'fittype','gauss2d');   
+% fitdata = AtomCloudFit('roiRow',[400,800],...
+%                        'roiCol',[50,450],...
+%                        'roiStep',2,...
+%                        'fittype','tf2d');   
 
 
 % fitdata = AtomCloudFit('roiRow',[500,720],...
@@ -22,11 +22,10 @@ fitdata = AtomCloudFit('roiRow',[400,800],...
 %                        'fittype','tf2d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d
 
 %% Imaging Second spot
-% 
-% fitdata = AtomCloudFit('roiRow',[180,500],...
-%                        'roiCol',[550,850],...
-%                        'roiStep',1,...
-%                        'fittype','tf2d'); 
+fitdata = AtomCloudFit('roiRow',[160,500],...
+                       'roiCol',[550,850],...
+                       'roiStep',2,...
+                       'fittype','tf2d'); 
 
 %% Imaging parameters
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
@@ -68,12 +67,11 @@ raw = RawImageData.loadImageSets('directory',directory,args{:});
 numImages = numel(raw);
 plotOpt = plotOpt || numImages == 1;    %This always enables plotting if only one image is analyzed
 
-cloud = AbsorptionImage;
-if numImages > 1
-    for nn = 2:numImages
-        cloud(nn,1) = AbsorptionImage;
-    end
+cloud = AbsorptionImage.empty;
+for nn = 1:numImages
+    cloud(nn,1) = AbsorptionImage;
 end
+
 
 for jj = 1:numImages
     %
