@@ -132,6 +132,34 @@ classdef AbsorptionImage < handle
             self.y = (c.pixelSize/c.magnification)*(1:size(self.image,1));
         end
         
+        function self = butterworth2D(self,spatialWidth,order)
+            %BUTTERWORTH2D Applies a 2D Butterworth filter to the corrected
+            %   and raw OD images
+            %
+            %   C = C.BUTTERWORTH2D(WIDTH) Applies a 4th order Butterworth
+            %   filter with spatial widths defined by WIDTH.  If WIDTH has
+            %   2 elements, the x and y filter widths are defined by those
+            %   elements.
+            %
+            %   C = C.BUTTERWORTH2D(__,ORDER) Applies a Butterworth filter
+            %   of order ORDER.
+            imgfft = fftshift(fft2(self.imageCorr));
+            imgrawfft = fftshift(fft2(self.image));
+            kx = 1/(2*diff(self.x(1:2)))*linspace(-1,1,numel(self.x));
+            ky = 1/(2*diff(self.y(1:2)))*linspace(-1,1,numel(self.y));
+            [KX,KY] = meshgrid(kx,ky);
+            if numel(spatialWidth) == 1
+                spatialWidth(2) = spatialWidth;
+            end
+            K2 = (spatialWidth(1)*KX).^2 + (spatialWidth(2)*KY).^2;
+            if nargin < 3
+                order = 4;
+            end
+            F = (1+K2.^order).^(-1);
+            self.imageCorr = real(ifft2(ifftshift(F.*imgfft)));
+            self.image = real(ifft2(ifftshift(F.*imgrawfft)));
+        end
+        
         function N = sum(self,offset)
             %SUM Computes the number of atoms by summing over the ROI
             %
