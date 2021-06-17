@@ -5,10 +5,11 @@ tof = 35e-3;
 
 col1 = 'b.-';
 col2 = 'r--';
-dispOD = [0,0.25];
+dispOD = [0,0.15];
 plotOpt = 0;
 plotROI = 0;
-
+useFilt = 1;
+filtWidth = 50e-6;
 %% In-trap imaging ROI
 % roiRow = repmat([575,725],3,1);
 % roiRow = [400,660;
@@ -24,16 +25,17 @@ plotROI = 0;
 % plotROI = {[575,675],[0,175]};
 
 %% Second Spot Imaging ROI 
-roiRow = [150,460;
-          460,750];
+roiRow = [200,440;
+          440 680];
 roiCol = repmat([550,850],2,1);
 
 % plotROI = {[200,850],[550,850]};
 
-% roiRow = [50,320;
-%           320,525;
-%           525,750];
-% roiCol = repmat([550,900],3,1);
+% roiRow = [10,200;
+%           200,440;
+%           440,690;
+%           690,875];
+% roiCol = repmat([550,850],4,1);
 
 %% Fit data
 fitdata = AtomCloudFit('roiRow',roiRow(1,:),...
@@ -43,7 +45,7 @@ fitdata = AtomCloudFit('roiRow',roiRow(1,:),...
 
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'pixelsize',6.45e-6,'magnification',0.99,...
-            'freqs',2*pi*[53,53,25],'exposureTime',15e-6,...
+            'freqs',2*pi*[53,53,25],'exposureTime',14e-6,...
             'polarizationcorrection',1.5,'satOD',5);
 
 directory = 'E:\RawImages\2021';
@@ -102,6 +104,9 @@ for nn = 1:numImages
         cloud(nn,mm).fitdata.set('roirow',roiRow(mm,:),'roicol',roiCol(mm,:));
         cloud(nn,mm).raw.copy(raw(nn));
         cloud(nn,mm).makeImage;
+        if useFilt
+            cloud(nn,mm).butterworth2D(filtWidth);
+        end
         cloud(nn,mm).fit('method','x');
             
         %% Plotting

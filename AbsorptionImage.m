@@ -102,8 +102,21 @@ classdef AbsorptionImage < handle
             elseif nargin >= 2
                 self.imgidxs = imgIndexes;
             end
-            imgWithAtoms = r.images(:,:,self.imgidxs(1));     %Subtract dark here if desired
-            imgWithoutAtoms = r.images(:,:,self.imgidxs(2));  %Subtract dark here if desired
+            if numel(self.imgidxs) == 2
+                imgWithAtoms = r.images(:,:,self.imgidxs(1));
+                imgWithoutAtoms = r.images(:,:,self.imgidxs(2));
+            elseif numel(self.imgidxs) == 3
+                imgWithAtoms = r.images(:,:,self.imgidxs(1)) - r.images(:,:,self.imgidxs(3));
+                imgWithoutAtoms = r.images(:,:,self.imgidxs(2)) - r.images(:,:,self.imgidxs(3));
+            else
+                error('Number of images to use is set to %d. Not sure what to do here...',numel(self.imgidxs));
+            end
+            %
+            % Match image intensities
+            %
+            [row,col] = self.fitdata.makeROIVectors;
+            exRegion = {row,col};
+            imgWithoutAtoms = self.match(imgWithAtoms,imgWithoutAtoms,exRegion);
             %
             % Create the uncorrected optical depth map and get peak OD.
             % Set NaNs and Infs to zero
@@ -132,7 +145,7 @@ classdef AbsorptionImage < handle
             self.y = (c.pixelSize/c.magnification)*(1:size(self.image,1));
         end
         
-        function self = butterworth2D(self,spatialWidth,order)
+        function self = butterworth2D(self,spatialWidth,order,filterType)
             %BUTTERWORTH2D Applies a 2D Butterworth filter to the corrected
             %   and raw OD images
             %
@@ -143,6 +156,9 @@ classdef AbsorptionImage < handle
             %
             %   C = C.BUTTERWORTH2D(__,ORDER) Applies a Butterworth filter
             %   of order ORDER.
+            %
+            %   C = C.BUTTERWORTH2D(__,TYPE) Applies a filter that is
+            %   either low pass (TYPE = 'low') or high pass (TYPE = 'high')
             imgfft = fftshift(fft2(self.imageCorr));
             imgrawfft = fftshift(fft2(self.image));
             kx = 1/(2*diff(self.x(1:2)))*linspace(-1,1,numel(self.x));
@@ -152,10 +168,16 @@ classdef AbsorptionImage < handle
                 spatialWidth(2) = spatialWidth;
             end
             K2 = (spatialWidth(1)*KX).^2 + (spatialWidth(2)*KY).^2;
-            if nargin < 3
+            if nargin < 3 || isempty(order)
                 order = 4;
             end
-            F = (1+K2.^order).^(-1);
+            if nargin < 4 || strcmpi(filterType,'low')
+                F = (1+K2.^order).^(-1);
+            elseif strcmpi(filterType,'high')
+                F = K2.^order./(1+K2.^order);
+            else
+                error('Filter type %s unknown!',filterType);
+            end
             self.imageCorr = real(ifft2(ifftshift(F.*imgfft)));
             self.image = real(ifft2(ifftshift(F.*imgrawfft)));
         end

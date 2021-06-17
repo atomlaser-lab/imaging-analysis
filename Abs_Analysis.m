@@ -2,19 +2,26 @@ function cloud = Abs_Analysis(varargin)
 
 atomType = 'Rb87';
 % tof = varargin{2};
-tof = 35e-3;%camera two
+tof = 216.35e-3;%camera two
 
 col1 = 'b.-';
 col2 = 'r--';
-dispOD = [0,0.5];
+dispOD = [0,.15];
 plotOpt = 0;
 plotROI = 0;
-%% Imaging ROI 
+useFilt = 1;
+filtWidth = 50e-6;
+%% Imaging ROI first spot
 % fitdata = AtomCloudFit('roiRow',[400,800],...
 %                        'roiCol',[50,450],...
 %                        'roiStep',2,...
 %                        'fittype','tf2d');   
 
+
+% fitdata = AtomCloudFit('roiRow',[400,800],...
+%                        'roiCol',[50,370],...
+%                        'roiStep',2,...
+%                        'fittype','tf2d'); 
 
 % fitdata = AtomCloudFit('roiRow',[500,720],...
 %                        'roiCol',[0,250],...
@@ -22,15 +29,20 @@ plotROI = 0;
 %                        'fittype','tf2d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d
 
 %% Imaging Second spot
-fitdata = AtomCloudFit('roiRow',[160,500],...
+% fitdata = AtomCloudFit('roiRow',[160,500],...
+%                        'roiCol',[550,850],...
+%                        'roiStep',2,...
+%                        'fittype','tf2d'); 
+
+fitdata = AtomCloudFit('roiRow',[0,1000],...
                        'roiCol',[550,850],...
                        'roiStep',2,...
-                       'fittype','tf2d'); 
+                       'fittype','none'); 
 
 %% Imaging parameters
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'pixelsize',6.45e-6,'magnification',0.99,...
-            'freqs',2*pi*[53,53,25],'exposureTime',15e-6,...
+            'freqs',2*pi*[53,53,25],'exposureTime',14e-6,...
             'polarizationcorrection',1.5,'satOD',5);
 
 directory = 'E:\RawImages\2021';
@@ -83,7 +95,16 @@ for jj = 1:numImages
     %
     % Create image and fit
     %
-    cloud(jj).makeImage;
+    if size(cloud(jj).raw.images,3) == 2
+        cloud(jj).makeImage;
+    elseif size(cloud(jj).raw.images,3) == 3
+        cloud(jj).makeImage([1,2,3]);
+    else
+        error('Not sure what to do here');
+    end
+    if useFilt
+        cloud(jj).butterworth2D(filtWidth);
+    end
     cloud(jj).fit('method','y');
         
     %% Plotting
