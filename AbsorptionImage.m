@@ -18,22 +18,14 @@ classdef AbsorptionImage < handle
         %
         x               %x position
         y               %y position
-        image           %raw absorption image: -log(imgWithAtoms/imgWithoutAtoms)
-        imageCorr       %corrected absorption image
+        ODraw           %raw absorption image: -log(imgWithAtoms/imgWithoutAtoms)
+        ODcorr          %corrected absorption image
         imgidxs         %Indicies in raw image data corresponding to data used for this instance
-        %
-        % Atomic sample properties
-        %
-        N               %Number of atoms extracted using a fit method in FITDATA
-        Nsum            %Number of atoms extracted by summing of the region of interest.
-        pos             %Position of the cloud as [x0,y0]
-        gaussWidth      %Width of the Gaussian fits as [xwidth,ywidth]
-        T               %Temperature of the cloud as [Tx,Ty]
-        peakOD          %Peak optical depth
-        PSD             %Phase-space density
-        cloudAngle      %Angle of the cloud
-        becFrac         %Fraction of atoms that are condensed
-        becWidth        %Width of the condensed fraction as [xwidth,ywidth]
+        numClouds       %Number of AtomClouds in the image
+    end
+    
+    properties(SetAccess = protected)
+        clouds          %Array of AtomCloud objects describing all atom clouds in image
     end
 
     properties(SetAccess = immutable)
@@ -121,28 +113,28 @@ classdef AbsorptionImage < handle
             % Create the uncorrected optical depth map and get peak OD.
             % Set NaNs and Infs to zero
             %
-            ODraw = real(-log(imgWithAtoms./imgWithoutAtoms));
-            ODraw(isnan(ODraw) | isinf(ODraw)) = 0;
-            self.image = ODraw;
-            self.peakOD = max(max(ODraw));
+            tmp = real(-log(imgWithAtoms./imgWithoutAtoms));
+            tmp(isnan(tmp) | isinf(tmp)) = 0;
+            self.ODraw = tmp;
+            self.peakOD = max(max(self.ODraw));
             %
             % Correct for finite saturation OD
             %
             if ~isinf(c.satOD)
-                ODmod = real(log((1-exp(-c.satOD))./(exp(-ODraw)-exp(-c.satOD))));
+                ODmod = real(log((1-exp(-c.satOD))./(exp(-self.ODraw)-exp(-c.satOD))));
             else
-                ODmod = ODraw;
+                ODmod = self.ODraw;
             end
             %
             % Correct for polarization and intensity saturation - this is
             % the corrected optical depth map
             %
-            self.imageCorr = c.polarizationCorrection*ODmod + (1 - exp(-ODmod)).*imgWithoutAtoms./Nsat;
+            self.ODcorr = c.polarizationCorrection*ODmod + (1 - exp(-ODmod)).*imgWithoutAtoms./Nsat;
             %
             % Create x and y vectors based on pixel size and magnification
             %
-            self.x = (c.pixelSize/c.magnification)*(1:size(self.image,2));
-            self.y = (c.pixelSize/c.magnification)*(1:size(self.image,1));
+            self.x = (c.pixelSize/c.magnification)*(1:size(self.ODraw,2));
+            self.y = (c.pixelSize/c.magnification)*(1:size(self.ODraw,1));
         end
         
         function self = butterworth2D(self,spatialWidth,order,filterType)
@@ -159,8 +151,8 @@ classdef AbsorptionImage < handle
             %
             %   C = C.BUTTERWORTH2D(__,TYPE) Applies a filter that is
             %   either low pass (TYPE = 'low') or high pass (TYPE = 'high')
-            imgfft = fftshift(fft2(self.imageCorr));
-            imgrawfft = fftshift(fft2(self.image));
+            imgfft = fftshift(fft2(self.ODcorr));
+            imgrawfft = fftshift(fft2(self.ODraw));
             kx = 1/(2*diff(self.x(1:2)))*linspace(-1,1,numel(self.x));
             ky = 1/(2*diff(self.y(1:2)))*linspace(-1,1,numel(self.y));
             [KX,KY] = meshgrid(kx,ky);
@@ -178,220 +170,16 @@ classdef AbsorptionImage < handle
             else
                 error('Filter type %s unknown!',filterType);
             end
-            self.imageCorr = real(ifft2(ifftshift(F.*imgfft)));
-            self.image = real(ifft2(ifftshift(F.*imgrawfft)));
-        end
-        
-        function N = sum(self,offset)
-            %SUM Computes the number of atoms by summing over the ROI
-            %
-            %   N = C.SUM() Returns the number of atoms as calculated by
-            %   summing over the ROI
-            %
-            %   N = C.SUM(OFFSET) Subtracts the offset OFFSET from the
-            %   image before summing
-            if nargin == 1
-                offset = 0;
-            end
-            %
-            % Shorten names
-            %
-            f = self.fitdata;
-            c = self.constants;
-            %
-            % Extract the region of interest
-            %
-            row = f.roiRow(1):f.roiRow(2);
-            col = f.roiCol(1):f.roiCol(2);
-            %
-            % Get pixel area
-            %
-            Apx = (c.pixelSize/c.magnification)^2;
-            %
-            % Correct for user-supplied OD offset and compute sum using the
-            % corrected OD map.  Clamp the computed number at a minimum of
-            % 0 - no negative atom numbers allowed!
-            %
-            img = self.imageCorr(row,col) - offset;
-            N = sum(sum(img))*Apx./c.absorptionCrossSection.*(1+4*(c.detuning/c.gamma).^2);
-            N = max(N,0);
+            self.ODcorr = real(ifft2(ifftshift(F.*imgfft)));
+            self.ODraw = real(ifft2(ifftshift(F.*imgrawfft)));
         end
 
-        function self = fit(self,varargin)
-            %FIT Performs a fit to the image and extracts information about
-            %the sample
+        function self = fit(self)
+            %FIT Performs fits to all ATOMCLOUD objects CLOUDS
             %
-            %   C = C.FIT() performs the fit for ABSORPTIONIMAGE object C
-            %   using default parameters -- namely, the fit type is that
-            %   set in C.FITDATA and the method for calculating the number
-            %   of atoms when using 1D fits is to use the 'y' marginal
-            %   distribution
-            %
-            %   C = C.FIT('fittype',FITTYPE,'ex',EX,'method',METHOD)
-            %   performs the fit and gets parameters based on the fit type
-            %   FITTYPE, 1D extraction method METHOD, and OD exclusion
-            %   value EX.  Name/value pairs can be excluded or in any
-            %   order.  FITTYPE can be any value accepted by class
-            %   ATOMCLOUDFIT. EX is the OD above which data is excluded for
-            %   2D fits. METHOD is either 'y', 'x', or 'xy' for calculating
-            %   the number of atoms from 1D fits
-            %
-            
-            %
-            % Parse input arguments
-            %
-            if mod(numel(varargin),2) ~= 0
-                error('Arguments must appear in name/value pairs!');
-            else
-                %
-                % Default values are to use the fit type specified in
-                % FITDATA, exclude no points based on OD, and to calculate
-                % the number of atoms using the y marginal distribution
-                %
-                fittype = [];
-                ex = [];
-                calcMethod = 'y';
-                for nn = 1:2:numel(varargin)
-                    v = varargin{nn+1};
-                    switch lower(varargin{nn})
-                        case {'fittype','type'}
-                            fittype = v;
-                        case 'ex'
-                            ex = v;
-                        case 'method'
-                            calcMethod = v;
-                    end
-                end
-            end
-            %Shorten names
-            c = self.constants;
-            f = self.fitdata;
-            %
-            % Create fit objects and then fit
-            %
-            f.makeFitObjects(self.x,self.y,self.imageCorr);
-            f.fit(fittype,ex);
-            %
-            % Compute effective pixel area, extract fit parameters
-            %
-            dx = diff(f.x(1:2));dy = diff(f.y(1:2));
-            p = f.params;
-            %
-            % Check that the fit is good
-            %
-            if f.is1D()
-                if p.gaussAmp(1) < 1.5*std(f.residuals.x)
-                    p.gaussAmp(1) = 0;
-                end
-                if p.gaussAmp(2) < 1.5*std(f.residuals.y)
-                    p.gaussAmp(2) = 0;
-                end
-            else
-                if p.gaussAmp < 1.5*std(f.residuals)
-                    p.gaussAmp = 0;
-                end
-            end
-            %
-            % Copy over parameters that don't need extra processing
-            %
-            self.gaussWidth = p.gaussWidth;
-            self.pos = p.pos;
-            self.becWidth = p.becWidth;
-            self.cloudAngle = p.cloudAngle;
-            self.T = c.calcTemperature(self.gaussWidth);
-            self.peakOD = max(max(f.image));
-            %
-            % Calculate number of atoms
-            %
-            if strcmpi(f.fittype,'sum')
-                %
-                % If fittype is 'sum', just use the summed value for the
-                % number of atoms
-                %
-                self.N = self.sum();
-                self.Nsum = self.N;
-            else
-                if f.is1D()
-                    %
-                    % If the fit method is a 1D type, calculate the number
-                    % of atoms based on the given calcMethod
-                    %
-                    switch lower(calcMethod)
-                        case 'x'
-                            Nth = sqrt(2*pi)*dy*p.gaussAmp(1).*p.gaussWidth(1);
-                            Nbec = 16/15*p.becAmp(1).*p.becWidth(1)*dy;
-                        case 'y'
-                            Nth = sqrt(2*pi)*dx*p.gaussAmp(2).*p.gaussWidth(2);
-                            Nbec = 16/15*p.becAmp(2).*p.becWidth(2)*dx;
-                        case {'xy','yx'}
-                            Nth = sqrt(2*pi*dx*dy)*sqrt(prod(p.gaussAmp.*p.gaussWidth));
-                            Nbec = 16/15*sqrt(prod(p.becAmp.*p.becWidth))*sqrt(dx*dy);
-                        otherwise
-                            error('Only allowed calculation methods for number of atoms are ''x'', ''y'', and ''xy''');
-                    end
-                else
-                    %
-                    % If the fit method is not a 1D method (i.e. it is 2D)
-                    % then calculate the number of atoms from the widths
-                    % and amplitudes directly. This also re-defines the
-                    % peak OD based on the fit amplitudes
-                    %
-                    Nbec = 2*pi/5*p.becAmp*prod(p.becWidth);
-                    Nth = p.gaussAmp*(2*pi*prod(p.gaussWidth));
-                    self.peakOD = p.becAmp +p.gaussAmp;
-                end
-                %
-                % This converts from the raw number to an actual number
-                % based on the absorption cross section and detuning
-                %
-                self.N = (Nth + Nbec)./c.absorptionCrossSection.*(1+4*(c.detuning/c.gamma).^2);
-                %
-                % If the fit is not a 1D fit, we can use the offset from
-                % the 2D fit to correct the number of atoms calculated
-                % through summing over the region of interest
-                %
-                if ~f.is1D()
-                    self.Nsum = self.sum(f.params.offset);
-                else
-                    self.Nsum = self.sum;
-                end
-                %
-                % Calculate the BEC fraction and the phase-space density
-                %
-                self.becFrac = Nbec./(Nth+Nbec);
-                self.PSD = self.calcPSD;
-            end
-        end
-
-        function PSD = calcPSD(self,N,T)
-            %CALCPSD Calculates the phase-space density based on either the
-            %object parameters or supplied parameters
-            %
-            %   PSD = C.CALCPSD() calculates the PSD based on object C's
-            %   number of atoms and temperature
-            %
-            %   PSD = C.CALCPSD(N,T) calculates the PSD based on the
-            %   supplied number N and temperature T along with object C's
-            %   trap frequencies and atom mass
-            %
-            if nargin == 1
-                N = self.N;
-                T = sqrt(prod(self.T));
-                F = self.becFrac;
-            else
-                F = 0;
-            end
-            c = self.constants;
-            deBroglie = sqrt(2*pi*const.hbar^2./(c.mass.*const.kb.*T));
-            freqMean = prod(c.freqs)^(1/3);
-            estGaussWidths = sqrt(const.kb*T./(c.mass*freqMean.^2));
-
-            nGauss = (1-F)*N./((2*pi)^1.5*estGaussWidths.^3);
-            nBEC = (15*F*N/(8*pi)).^(2/5).*(c.mass*freqMean^2/2).^(3/5);
-            n0 = nGauss + nBEC;
-            PSD = n0.*deBroglie.^3;
-            if nargin == 1
-                self.PSD = PSD;
+            for nn = 1:numel(self.clouds)
+                self.clouds(nn).makeFitObjects(self.x,self.y,self.ODcorr);
+                self.clouds(nn).fit;
             end
         end
 
@@ -403,9 +191,18 @@ classdef AbsorptionImage < handle
             %   AbsorptionImage objects C and returns in VARARGOUT the vectors
             %   of properties 'NAME1', 'NAME2', etc.  Valid values for 'NAME1',
             %   etc correspond to property names in the AbsorptionImage class.
-            for nn = 1:numel(self)
-                for mm = 1:numel(varargin)
-                    varargout{mm}(nn,:) = self(nn).(varargin{mm});
+            if numel(varargin) == 1
+                tmp = zeros(numel(self),numel(self(1).clouds));
+                for nn = 1:numel(self)
+                    for mm = 1:numel(self(1).clodus)
+                        tmp(nn,mm) = self(nn).clouds(mm).get(varargin{1});
+                    end
+                end
+            else
+                for nn = 1:numel(self)
+                    for mm = 1:numel(varargin)
+                        varargout{mm}(nn,:) = self(nn).clouds(1).(varargin{mm});
+                    end
                 end
             end
         end
@@ -422,9 +219,14 @@ classdef AbsorptionImage < handle
             %   plot the ROI
             %
             if nargin == 1
-                row = self.fitdata.roiRow;col = self.fitdata.roiCol;
+                plot([col(1),col(end),col(end),col(1),col(1)],[row(1),row(1),row(end),row(end),row(1)],'r--');
+            else
+                for nn = 1:numel(self.clouds)
+                    row = self.clouds(nn).fitdata.roiRow;
+                    col = self.clouds(nn).fitdata.roiCol;
+                    plot([col(1),col(end),col(end),col(1),col(1)],[row(1),row(1),row(end),row(end),row(1)],'r--');
+                end
             end
-            plot([col(1),col(end),col(end),col(1),col(1)],[row(1),row(1),row(end),row(end),row(1)],'r--');
         end
 
         function str = makeImageSummary(self)
@@ -435,76 +237,66 @@ classdef AbsorptionImage < handle
             %   number of atoms from the fit, the peak OD, the temperature,
             %   and the number of atoms from summing over the ROI
             %
+            c = self.clouds(1);
             str{1} = sprintf('N = %1.3g (%d%%)    OD_{peak} = %1.3g    T_{y} = %3.2f uK',...
-                self.N,round(self.becFrac*100),self.peakOD,sqrt(prod(self.T))*1e6);
-            str{2} = sprintf('Nsum = %1.3g',self.Nsum);
+                c.N,round(c.becFrac*100),c.peakOD,sqrt(prod(c.T))*1e6);
+            str{2} = sprintf('Nsum = %1.3g',c.Nsum);
         end
 
-        function self = plotYData(self,col1,col2)
+        function self = plotYData(self)
             %PLOTYDATA Plots the marginal y distribution as a vertically
             %oriented plot
             %
-            %   C = C.PLOTYDATA plots the data for object C with default
-            %   line specs 'b.' for the data and 'r-' for the fit
+            %   C = C.PLOTYDATA plots the data for all atom clouds in
+            %   ABSORPTIONIMAGE object C
             %
-            %   C = C.PLOTYDATA(COL1) uses line spec COL1 for the data
-            %
-            %   C = C.PLOTYDATA(__,COL2) uses line spec COL2 for the fit
-            %
-            if nargin < 2
-                col1 = 'b.';
-                col2 = 'r-';
-            elseif nargin < 3
-                col2 = 'r-';
+            for nn = 1:numel(self.clouds)
+                %
+                % Plots the marginal Y distribution as a
+                % vertically-oriented plot
+                %
+                f = self.clouds(nn).fitdata;
+                h = plot(f.ydata,-f.y,'.-');
+                hold on;
+                plot(f.yfit,-f.y,'-','Color',h.Color);
             end
-            f = self.fitdata;
-            %
-            % Plots the marginal Y distribution as a vertically-oriented
-            % plot
-            %
-            plot(f.ydata,-f.y,col1);
-            hold on
-            plot(f.yfit,-f.y,col2);
-            %
-            % Creates a summary of the Y distribution
-            %
-            str{1} = sprintf('Gauss_{y} = %3.1f um',self.gaussWidth(2)*1e6);
-            str{2} = sprintf('TF_{y} = %3.1f um',self.becWidth(2)*1e6);
-            hold off;
-            xlabel(str,'fontsize',8);
+            if numel(self.clouds) == 1
+                %
+                % Creates a summary of the Y distribution
+                %
+                str{1} = sprintf('Gauss_{y} = %3.1f um',self.clouds(1).gaussWidth(2)*1e6);
+                str{2} = sprintf('TF_{y} = %3.1f um',self.clouds(1).becWidth(2)*1e6);
+                hold off;
+                xlabel(str,'fontsize',8);
+            end
         end
 
-        function self = plotXData(self,col1,col2)
+        function self = plotXData(self)
             %PLOTXDATA Plots the marginal X distribution as a horizontally
             %oriented plot
             %
-            %   C = C.PLOTXDATA plots the data for object C with default
-            %   line specs 'b.' for the data and 'r-' for the fit
+            %   C = C.PLOTXDATA plots the X distributions for each atomic
+            %   cloud in the ABSORPTIONIMAGE object C
             %
-            %   C = C.PLOTXDATA(COL1) uses line spec COL1 for the data
-            %
-            %   C = C.PLOTXDATA(__,COL2) uses line spec COL2 for the fit
-            %
-            if nargin < 2
-                col1 = 'b.';
-                col2 = 'r-';
-            elseif nargin < 3
-                col2 = 'r-';
+            for nn = 1:numel(self.clouds)
+                %
+                % Plots the marginal X distribution as a
+                % horizontally-oriented plot
+                %
+                f = self.clouds(nn).fitdata;
+                h = plot(f.x,f.xdata,'.-');
+                hold on;
+                plot(f.x,f.xfit,'-','Color',h.Color);
             end
-            f = self.fitdata;
-            %
-            % Plot the marginal X distribution and fit
-            %
-            plot(f.x,f.xdata,col1);
-            hold on
-            plot(f.x,f.xfit,col2);
-            %
-            % Creates a summary of the X distribution
-            %
-            str{1} = sprintf('Gauss_{x} = %3.1f um',self.gaussWidth(1)*1e6);
-            str{2} = sprintf('TF_{x} = %3.1f um',self.becWidth(1)*1e6);
-            hold off;
-            xlabel(str,'fontsize',8);
+            if numel(self.clouds) == 1
+                %
+                % Creates a summary of the X distribution
+                %
+                str{1} = sprintf('Gauss_{x} = %3.1f um',self.clouds(1).gaussWidth(1)*1e6);
+                str{2} = sprintf('TF_{x} = %3.1f um',self.clouds(1).becWidth(1)*1e6);
+                hold off;
+                xlabel(str,'fontsize',8);
+            end
         end
 
         function self = plotAllData(self,dispOD,col1,col2,plotROI)
@@ -626,22 +418,12 @@ classdef AbsorptionImage < handle
             else
                 s.x = self.x;
                 s.y = self.y;
-                s.image = self.image;
-                s.imageCorr = self.imageCorr;
+                s.ODraw = self.ODraw;
+                s.ODcorr = self.ODcorr;
                 s.imgidxs = self.imgidxs;
-                s.N = self.N;
-                s.Nsum = self.Nsum;
-                s.pos = self.pos;
-                s.gaussWidth = self.gaussWidth;
-                s.T = self.T;
-                s.peakOD = self.peakOD;
-                s.PSD = self.PSD;
-                s.cloudAngle = self.cloudAngle;
-                s.becFrac = self.becFrac;
-                s.becWidth = self.becWidth;
+                s.clouds = s.clouds.struct;
                 s.raw = struct(self.raw);
                 s.constants = struct(self.constants);
-                s.fitdata = struct(self.fitdata);
             end
         end
         
@@ -657,11 +439,14 @@ classdef AbsorptionImage < handle
                 %
                 s.x = [];
                 s.y = [];
-                s.image = [];
-                s.imageCorr = [];
+                s.ODraw = [];
+                s.ODcorr = [];
                 s.raw.images = uint16(s.raw.images);
-                s.fitdata.image = [];
-                s.fitdata.residuals = [];
+                for nn = 1:numel(s.clouds)
+                    s.clouds(nn).fitdata.image = [];
+                    s.clouds(nn).fitdata.bg = [];
+                    s.clouds(nn).fitdata.residuals = [];
+                end
             end
         end
 
@@ -680,29 +465,18 @@ classdef AbsorptionImage < handle
                 self = AbsorptionImage;
                 raw = RawImageData.loadobj(a.raw);
                 c = AtomImageConstants.loadobj(a.constants);
-                f = AtomCloudFit.loadobj(a.fitdata);
                 self.raw.copy(raw);
                 self.constants.copy(c);
-                self.fitdata.copy(f);
 
                 self.makeImage;
-                [row,col] = self.fitdata.makeROIVectors;
-                self.fitdata.image = self.imageCorr(row,col);
-                %
-                % Properties
-                %
-                self.N = a.N;
-                self.Nsum = a.Nsum;
-                self.pos = a.pos;
-                self.gaussWidth = a.gaussWidth;
-                self.T = a.T;
-                self.peakOD = a.peakOD;
-                self.PSD = a.PSD;
-                self.cloudAngle = a.cloudAngle;
-                self.becFrac = a.becFrac;
-                self.becWidth = a.becWidth;
+                for nn = 1:numel(a.clouds)
+                    self.clouds(nn) = AtomCloud.loadobj(a.clouds(nn));
+                    self.clouds(nn).constants = self.constants;
+                    self.clouds(nn).fitdata.makeFitObjects(self.x,self.y,self.ODcorr);
+                end
             end
         end
+        
         function [LabelStr,NumberStrTotal] = formatLabel(LabelCell,FormatCell,NumberCell)
             %FORMATLABEL Uses input labels, formats, and values to create a
             %nice label that can be printed to the command line

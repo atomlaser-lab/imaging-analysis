@@ -289,12 +289,13 @@ classdef AtomCloudFit < handle
             %
             % Perform fit according to fit type
             %
+            self.bg = [];
+            self.residuals = [];
+            self.params = CloudParameters([]);
             switch self.fittype
                 case {'none','sum'}
                     self.params = CloudParameters();
                 case {'gauss1d','twocomp1d','tf1d'}
-                    self.bg = [];
-                    self.residuals = [];
                     [px,self.xfit,self.bg.x] = self.fit1D(self.fittype,self.x,self.xdata,self.lb,self.ub,self.guess,ex);
                     [py,self.yfit,self.bg.y] = self.fit1D(self.fittype,self.y,self.ydata,self.lb,self.ub,self.guess,ex);
                     self.residuals.x = self.xdata(:) - self.xfit(:);
