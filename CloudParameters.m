@@ -1,6 +1,6 @@
-classdef CloudParameters
-    %CLOUDPARAMETERS Defines a simple value class with properties that
-    %describe a cloud of cold atoms
+classdef CloudParameters < handle
+    %CLOUDPARAMETERS Defines a  class with properties that parameters used
+    %to fit to a distribution of atoms
 
     properties
         gaussAmp    %Amplitude(s) of Gaussian fits
@@ -20,6 +20,9 @@ classdef CloudParameters
             %
             %   C = CLOUDPARAMETERS() creates CLOUDPARAMETERS object C with
             %   default parameters (all 0)
+            %
+            %   C = CLOUDPARAMETERS(D) creates a CLOUDPARAMETERS
+            %   object C with parameters all set to value D
             %
             %   C = CLOUDPARAMETERS(C1,C2) creates a new object C from
             %   input CLOUDPARAMETERS objects C1 and C2 assuming that C1
@@ -41,7 +44,15 @@ classdef CloudParameters
             self.cloudAngle = 0;
             self.lin = [0,0];
             if nargin == 0
-                return
+                return;
+            elseif nargin == 1
+                %
+                % Set all parameters to input
+                %
+                p = properties(self);
+                for nn = 1:numel(p)
+                    self.(p{nn}) = varargin{1};
+                end
             elseif numel(varargin) == 2 && isa(varargin{1},'CloudParameters') && isa(varargin{2},'CloudParameters')
                 %
                 % If there are two inputs and they are both CloudParameter
@@ -61,6 +72,20 @@ classdef CloudParameters
                 % If arguments are in name/value pairs then parse the
                 % arguments
                 %
+                self.set(varargin{:});
+            else
+                error('Inputs must either be no inputs, the single numeric input, two CloudParameters objects, or name/value pairs');
+            end
+        end
+        
+        function self = set(self,varargin)
+            %SET Sets properties based on name/value pairs
+            %
+            %   SELF = SELF.SET(NAME,VALUE,...) sets properties indicated
+            %   by case-insensitive NAME to VALUE
+            if mod(numel(varargin),2) ~= 0
+                error('Arguments must appear as name/value pairs!');
+            else
                 for nn = 1:2:numel(varargin)
                     v = varargin{nn+1};
                     switch lower(varargin{nn})
@@ -84,8 +109,74 @@ classdef CloudParameters
                             error('Input option %s not supported!',varargin{nn});
                     end
                 end
-            else
-                error('Inputs must either be no inputs, two CloudParameters objects, or name/value pairs');
+            end
+        end
+        
+        function self = compare(self,cp)
+            %COMPARE Compares current object with input object, and for
+            %every non-empty property in input object sets current object
+            %property to that value
+            %
+            %   SELF = SELF.COMPARE(CP) Uses input CLOUDPARAMETERS object
+            %   CP for comparison.
+            if ~isa(cp,'CloudParameters')
+                error('Input must be of type CloudParameters');
+            end
+            p = properties(self);
+            for nn = 1:numel(p)
+                v2 = cp.(p{nn});
+                if ~isempty(v2)
+                    self.(p{nn}) = v2;
+                end
+            end
+        end
+        
+        function v = convert2array(self,varargin)
+            %CONVERT2ARRAY Converts object to an array with properties
+            %ordered according to input arguments
+            %
+            %   V = SELF.CONVERT2ARRAY(VARARGIN) Orders object properties
+            %   in output array V according to input variable argument list
+            %   VARARGIN. So inputs 'offset','pos','gaussamp', returns an
+            %   array where the first element is the offset, the second is
+            %   the position (or second and third, if pos is 2 elements),
+            %   and so on
+            v = [];
+            for nn = 1:numel(varargin)
+                switch lower(varargin{nn})
+                    case 'offset'
+                        v = [v,self.offset(:)']; %#ok<*AGROW>
+                    case 'pos'
+                        v = [v,self.pos(:)'];
+                    case 'posx'
+                        v = [v,self.pos(1)];
+                    case 'posy'
+                        v = [v,self.pos(2)];
+                    case 'gaussamp'
+                        v = [v,self.gaussAmp(:)'];
+                    case 'gausswidth'
+                        v = [v,self.gaussWidth(:)'];
+                    case 'gausswidthx'
+                        v = [v,self.gaussWidth(1)];
+                    case 'gausswidthy'
+                        v = [v,self.gaussWidth(2)];
+                    case 'becamp'
+                        v = [v,self.becAmp(:)'];
+                    case 'becwidth'
+                        v = [v,self.becWidth(:)'];
+                    case 'becwidthx'
+                        v = [v,self.becWidth(1)];
+                    case 'becwidthy'
+                        v = [v,self.becWidth(2)];
+                    case {'lin','linear'}
+                        v = [v,self.lin];
+                    case {'linx','linearx'}
+                        v = [v,self.lin(1)];
+                    case {'liny','lineary'}
+                        v = [v,self.lin(2)];
+                    case 'cloudangle'
+                        v = [v,self.cloudAngle(:)'];
+                end
             end
         end
         
@@ -120,6 +211,52 @@ classdef CloudParameters
             p = fields(a);
             for nn = 1:numel(p)
                 b.(p{nn}) = a.(p{nn});
+            end
+        end
+        
+        function cp = convertFromArray(order,a)
+            %CONVERTFROMARRAY Converts an input array into a
+            %CLOUDPARAMETERS object based on input labelling scheme
+            %
+            %   CP = CONVERTFROMARRAY(ORDER,ARRAY) uses cell array ORDER to
+            %   determine which elements in ARRAY are assigned to which
+            %   properties of new CLOUDPARAMETERS object CP
+            cp = CloudParameters;
+            for nn = 1:numel(order)
+                switch lower(order{nn})
+                    case 'offset'
+                        cp.offset = a(nn);
+                    case 'pos'
+                        cp.pos = a(nn);
+                    case 'posx'
+                        cp.pos(1) = a(nn);
+                    case 'posy'
+                        cp.pos(2) = a(nn);
+                    case 'gaussamp'
+                        cp.gaussAmp = a(nn);
+                    case 'gausswidth'
+                        cp.gaussWidth = a(nn);
+                    case 'gausswidthx'
+                        cp.gaussWidth(1) = a(nn);
+                    case 'gausswidthy'
+                        cp.gaussWidth(2) = a(nn);
+                    case 'becamp'
+                        cp.becAmp = a(nn);
+                    case 'becwidth'
+                        cp.becWidth = a(nn);
+                    case 'becwidthx'
+                        cp.becWidth(1) = a(nn);
+                    case 'becwidthy'
+                        cp.becWidth(2) = a(nn);
+                    case {'lin','linear'}
+                        cp.lin = a(nn);
+                    case {'linx','linearx'}
+                        cp.lin(1) = a(nn);
+                    case {'liny','lineary'}
+                        cp.lin(2) = a(nn);
+                    case 'cloudangle'
+                        cp.cloudAngle = a(nn);
+                end
             end
         end
     end
