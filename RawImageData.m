@@ -231,7 +231,7 @@ classdef RawImageData < handle
             % the times at which they were taken
             %
             if any(abs(diff([f.datenum]))*3600*24 > 3)
-                str = sprintf('Set of images may not have been taken together. Time difference of %.3f s',max(abs(diff([f.datenum]))));
+                str = sprintf('Set of images may not have been taken together. Time difference of %.3f s',max(abs(diff([f.datenum]))*3600*24));
                 warning(str); %#ok<SPWRN>
                 msg = ImageAnalysisErrorHandler(ImageAnalysisErrorHandler.STATUS_WARNING,str);
             else
