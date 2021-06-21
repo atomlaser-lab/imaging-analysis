@@ -31,7 +31,6 @@ classdef AbsorptionImage < handle
     properties(SetAccess = immutable)
         raw             %RAWIMAGEDATA object describing the raw image data
         constants       %ATOMIMAGECONSTANTS object describing the conditions under which the measurement was done
-        fitdata         %ATOMCLOUDFIT object describing the fitting
     end
 
     methods
@@ -60,12 +59,28 @@ classdef AbsorptionImage < handle
             else
                 self.constants = varargin{2};
             end
-            if nargin < 3
-                self.fitdata = AtomCloudFit;
+        end
+        
+        function self = setClouds(self,v)
+            %SETCLOUDS Sets the number of clouds or the CLOUDS property
+            %
+            %   SELF = SELF.SETCLOUDS(V) where V is an integer creates V
+            %   blank ATOMCLOUD objects
+            %
+            %   SELF = SELF.SETCLOUDS(V) where V is an array of ATOMCLOUD
+            %   objects sets the internal CLOUDS property to V
+            if isnumeric(v)
+                self.clouds = AtomCloud.empty;
+                for nn = 1:v
+                    self.clouds(nn,1) = AtomCloud(self.constants);
+                end
+            elseif isa(v,'AtomCloud')
+                self.clouds = v;
             else
-                self.fitdata = varargin{3};
+                error('Input must be either an integer or an array of AtomCloud objects');
             end
         end
+                
 
         function self = makeImage(self,imgIndexes)
             %MAKEIMAGE Creates the uncorrected and corrected absorption
@@ -104,19 +119,13 @@ classdef AbsorptionImage < handle
                 error('Number of images to use is set to %d. Not sure what to do here...',numel(self.imgidxs));
             end
             %
-            % Match image intensities
-            %
-            [row,col] = self.fitdata.makeROIVectors;
-            exRegion = {row,col};
-            imgWithoutAtoms = self.match(imgWithAtoms,imgWithoutAtoms,exRegion);
-            %
             % Create the uncorrected optical depth map and get peak OD.
             % Set NaNs and Infs to zero
             %
             tmp = real(-log(imgWithAtoms./imgWithoutAtoms));
             tmp(isnan(tmp) | isinf(tmp)) = 0;
             self.ODraw = tmp;
-            self.peakOD = max(max(self.ODraw));
+%             self.peakOD = max(max(self.ODraw));
             %
             % Correct for finite saturation OD
             %
@@ -178,9 +187,13 @@ classdef AbsorptionImage < handle
             %FIT Performs fits to all ATOMCLOUD objects CLOUDS
             %
             for nn = 1:numel(self.clouds)
-                self.clouds(nn).makeFitObjects(self.x,self.y,self.ODcorr);
+                self.clouds(nn).fitdata.makeFitObjects(self.x,self.y,self.ODcorr);
                 self.clouds(nn).fit;
             end
+        end
+        
+        function self = jointFit(self,whichClouds)
+            
         end
 
         function varargout = get(self,varargin)
@@ -218,7 +231,7 @@ classdef AbsorptionImage < handle
             %   C = C.PLOTROI(ROW,COL) uses the ROI given by ROW and COL to
             %   plot the ROI
             %
-            if nargin == 1
+            if nargin > 1
                 plot([col(1),col(end),col(end),col(1),col(1)],[row(1),row(1),row(end),row(end),row(1)],'r--');
             else
                 for nn = 1:numel(self.clouds)
@@ -258,7 +271,7 @@ classdef AbsorptionImage < handle
                 f = self.clouds(nn).fitdata;
                 h = plot(f.ydata,-f.y,'.-');
                 hold on;
-                plot(f.yfit,-f.y,'-','Color',h.Color);
+                plot(f.yfit,-f.y,'-','Color',h.Color,'linewidth',1);
             end
             if numel(self.clouds) == 1
                 %
@@ -286,7 +299,7 @@ classdef AbsorptionImage < handle
                 f = self.clouds(nn).fitdata;
                 h = plot(f.x,f.xdata,'.-');
                 hold on;
-                plot(f.x,f.xfit,'-','Color',h.Color);
+                plot(f.x,f.xfit,'-','Color',h.Color,'linewidth',1);
             end
             if numel(self.clouds) == 1
                 %
@@ -299,15 +312,14 @@ classdef AbsorptionImage < handle
             end
         end
 
-        function self = plotAllData(self,dispOD,col1,col2,plotROI)
+        function self = plotAllData(self,dispOD,plotROI)
             %PLOTALLDATA Plots the absorption image and the X and Y
             %marginal distributions on the current figure
             %
-            %   C = C.PLOTALLDATA(DISPOD,COL1,COL2) Plots, for object C,
+            %   C = C.PLOTALLDATA(DISPOD) Plots, for object C,
             %   the absorption image and the X and Y distributions on the
             %   current figure. DISPOD is the OD range to display on the
-            %   image (using caxis), and COL1 and COL2 are the line specs
-            %   to use for the marginal data and fits
+            %   image (using caxis).
             %
             %   C = C.PLOTALLDATA(__,PLOTROI) restricts the image to
             %   PLOTROI.  If PLOTROI is not a cell array, it is interpreted
@@ -316,7 +328,7 @@ classdef AbsorptionImage < handle
             %   this is interpreted as the {ROW,COL} to use for limiting
             %   the image to a given ROI
             %
-            if nargin < 5
+            if nargin < 3
                 plotROI = false;
             end
             %
@@ -337,13 +349,13 @@ classdef AbsorptionImage < handle
             %
 %             subplot(6,6,[1 7 13 19]);
             axes('position',[0.075,0.35,0.15,0.6]);
-            self.plotYData(col1,col2);
+            self.plotYData();
             %
             % Plot the X distribution
             %
 %             subplot(6,6, 31:36)
             axes('position',[0.1,0.075,0.8,0.15]);
-            self.plotXData(col1,col2);
+            self.plotXData();
         end
 
         function self = plotAbsData(self,dispOD,plotROI)
@@ -366,7 +378,7 @@ classdef AbsorptionImage < handle
             %
             % Create the image make it look nice
             %
-            imagesc(self.image,dispOD);
+            imagesc(self.ODraw,dispOD);
             axis equal;
             axis tight;
             colorbar;
@@ -376,8 +388,8 @@ classdef AbsorptionImage < handle
             % ROI
             %
             if ~iscell(plotROI) && plotROI
-                xlim(self.fitdata.roiCol);
-                ylim(self.fitdata.roiRow);
+                xlim(self.cloud(1).fitdata.roiCol);
+                ylim(self.cloud(1).fitdata.roiRow);
             elseif iscell(plotROI)
                 xlim(plotROI{2});
                 ylim(plotROI{1});
@@ -400,10 +412,20 @@ classdef AbsorptionImage < handle
             %
             imgNum = self.raw.getImageNumbers;
             labelCell = {'Image','x width/um','y width/um','Nsum' ,'Nfit' ,'BEC %','PeakOD','T/nk' ,'PSD'};
-            formatCell = {'% 5d','%0.3e'     ,'%0.3e'     ,'%0.2e','%0.2e','%0.2f','%0.2e' ,'%0.2e','%0.2e'};
-            numberCell = {imgNum(1),self.gaussWidth(1)*1e6,self.gaussWidth(2)*1e6,self.Nsum,self.N,self.becFrac*1e2,self.peakOD,sqrt(prod(self.T))*1e9,self.PSD};
-            [labelStr,numberStrTotal] = self.formatLabel(labelCell,formatCell,numberCell);
+            formatCell = {'% 5.1f','%0.3e'     ,'%0.3e'     ,'%0.2e','%0.2e','%0.2f','%0.2e' ,'%0.2e','%0.2e'};
+            numberStrTotal = {};
+            for nn = 1:numel(self.clouds)
+                c = self.clouds(nn);
+                numberCell = {imgNum(1)+nn/10,c.gaussWidth(1)*1e6,c.gaussWidth(2)*1e6,c.Nsum,c.N,c.becFrac*1e2,c.peakOD,sqrt(prod(c.T))*1e9,c.PSD};
+                if nn == 1
+                    [labelStr,numberStrTotal{nn}] = self.formatLabel(labelCell,formatCell,numberCell);
+                else
+                    [~,numberStrTotal{nn}] = self.formatLabel(labelCell,formatCell,numberCell);
+                end
+            end
+            numberStrTotal = strjoin(numberStrTotal,'\n');
         end
+        
         
         %% Saving and loading functions
         function s = struct(self)
@@ -421,7 +443,7 @@ classdef AbsorptionImage < handle
                 s.ODraw = self.ODraw;
                 s.ODcorr = self.ODcorr;
                 s.imgidxs = self.imgidxs;
-                s.clouds = s.clouds.struct;
+                s.clouds = self.clouds.struct;
                 s.raw = struct(self.raw);
                 s.constants = struct(self.constants);
             end
@@ -469,10 +491,11 @@ classdef AbsorptionImage < handle
                 self.constants.copy(c);
 
                 self.makeImage;
+                self.clouds = AtomCloud.empty;
                 for nn = 1:numel(a.clouds)
-                    self.clouds(nn) = AtomCloud.loadobj(a.clouds(nn));
-                    self.clouds(nn).constants = self.constants;
-                    self.clouds(nn).fitdata.makeFitObjects(self.x,self.y,self.ODcorr);
+                    self.clouds(nn,1) = AtomCloud.loadobj(a.clouds(nn));
+                    self.clouds(nn,1).setConstants(self.constants);
+                    self.clouds(nn,1).fitdata.makeFitObjects(self.x,self.y,self.ODcorr);
                 end
             end
         end

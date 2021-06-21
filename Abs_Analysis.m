@@ -1,43 +1,20 @@
-function cloud = Abs_Analysis(varargin)
+function img = Abs_Analysis(varargin)
 
 atomType = 'Rb87';
 % tof = varargin{2};
 tof = 216.35e-3;%camera two
 
-col1 = 'b.-';
-col2 = 'r--';
 dispOD = [0,.15];
 plotOpt = 0;
 plotROI = 0;
 useFilt = 1;
 filtWidth = 50e-6;
-%% Imaging ROI first spot
-% fitdata = AtomCloudFit('roiRow',[400,800],...
-%                        'roiCol',[50,450],...
-%                        'roiStep',2,...
-%                        'fittype','tf2d');   
-
-
-% fitdata = AtomCloudFit('roiRow',[400,800],...
-%                        'roiCol',[50,370],...
-%                        'roiStep',2,...
-%                        'fittype','tf2d'); 
-
-% fitdata = AtomCloudFit('roiRow',[500,720],...
-%                        'roiCol',[0,250],...
-%                        'roiStep',2,...
-%                        'fittype','tf2d');    %Options: none, gauss1d, twocomp1d, bec1d, gauss2d, twocomp2d, bec2d
-
 %% Imaging Second spot
-% fitdata = AtomCloudFit('roiRow',[160,500],...
-%                        'roiCol',[550,850],...
-%                        'roiStep',2,...
-%                        'fittype','tf2d'); 
-
-fitdata = AtomCloudFit('roiRow',[0,1000],...
-                       'roiCol',[550,850],...
-                       'roiStep',2,...
-                       'fittype','none'); 
+roiRow = [250,500;
+          500,750];
+roiCol = repmat([550,850],2,1);
+roiStep = 2;
+fittype = 'tf2d';
 
 %% Imaging parameters
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
@@ -45,7 +22,7 @@ imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'freqs',2*pi*[53,53,25],'exposureTime',14e-6,...
             'polarizationcorrection',1.5,'satOD',5);
 
-directory = 'E:\RawImages\2021';
+directory = '../raw-images';
 
 %% Load raw data
 if nargin == 0 || (nargin == 1 && strcmpi(varargin{1},'last')) || (nargin == 2 && strcmpi(varargin{1},'last') && isnumeric(varargin{2}))
@@ -79,9 +56,9 @@ raw = RawImageData.loadImageSets('directory',directory,args{:});
 numImages = numel(raw);
 plotOpt = plotOpt || numImages == 1;    %This always enables plotting if only one image is analyzed
 
-cloud = AbsorptionImage.empty;
+img = AbsorptionImage.empty;
 for nn = 1:numImages
-    cloud(nn,1) = AbsorptionImage;
+    img(nn,1) = AbsorptionImage;
 end
 
 
@@ -89,23 +66,30 @@ for jj = 1:numImages
     %
     % Copy immutable properties
     %
-    cloud(jj).constants.copy(imgconsts);
-    cloud(jj).fitdata.copy(fitdata);
-    cloud(jj).raw.copy(raw(jj));
+    img(jj).constants.copy(imgconsts);
+    img(jj).raw.copy(raw(jj));
+    img(jj).setClouds(size(roiRow,1));
+    for nn = 1:numel(img(jj).clouds)
+        img(jj).clouds(nn).fitdata.set('roirow',roiRow(nn,:),'roiCol',roiCol(nn,:),...
+            'roiStep',roiStep,'fittype',fittype);
+    end
     %
-    % Create image and fit
+    % Create image
     %
-    if size(cloud(jj).raw.images,3) == 2
-        cloud(jj).makeImage;
-    elseif size(cloud(jj).raw.images,3) == 3
-        cloud(jj).makeImage([1,2,3]);
+    if size(img(jj).raw.images,3) == 2
+        img(jj).makeImage;
+    elseif size(img(jj).raw.images,3) == 3
+        img(jj).makeImage([1,2,3]);
     else
         error('Not sure what to do here');
     end
     if useFilt
-        cloud(jj).butterworth2D(filtWidth);
+        img(jj).butterworth2D(filtWidth);
     end
-    cloud(jj).fit('method','y');
+    %
+    % Fit clouds
+    %
+    img(jj).fit;
         
     %% Plotting
     if plotOpt
@@ -114,7 +98,7 @@ for jj = 1:numImages
             % Plot absorption data and marginal distributions when there is only 1 image
             %
             figure(3);clf;
-            cloud(jj).plotAllData(dispOD,col1,col2,plotROI);
+            img(jj).plotAllData(dispOD,plotROI);
         else
             %
             % Plot only the absorption data in a grid when there is more than one image
@@ -126,16 +110,18 @@ for jj = 1:numImages
             
             figure(3);
             subplot(dimSubPlot,dimSubPlot,jj);
-            cloud(jj).plotAbsData(dispOD,plotROI);
+            img(jj).plotAbsData(dispOD,plotROI);
         end
     end
     
     %% Print summaries
-    [labelStr,numStr]=cloud(jj).labelOneROI;
+    [labelStr,numStr] = img(jj).labelOneROI;
     if jj == 1
         disp(labelStr);
     end
-    disp(numStr);
+%     for nn = 1:numel(img(jj).clouds)
+%         [labelStr,numStr] = img(jj).labelOneROI;
+        disp(numStr);
     
 end
 

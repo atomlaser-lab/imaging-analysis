@@ -43,6 +43,15 @@ classdef AtomCloud < handle
             end
         end
         
+        function self = setConstants(self,constantsIn)
+            %SETCONSTANTS Sets the internal CONSTANTS property to be the
+            %same reference as the input argument
+            %
+            %   SELF = SELF.SETCONSTANTS(IN) Sets the internal CONSTANTS
+            %   property to the same reference as IN
+            self.constants = constantsIn;
+        end
+        
         function N = sum(self,bg)
             %SUM Computes the number of atoms by summing over the ROI
             %
@@ -60,21 +69,17 @@ classdef AtomCloud < handle
             f = self.fitdata;
             c = self.constants;
             %
-            % Extract the region of interest
-            %
-            row = f.roiRow(1):f.roiRow(2);
-            col = f.roiCol(1):f.roiCol(2);
-            %
             % Get pixel area
             %
-            Apx = (c.pixelSize/c.magnification)^2;
+            dx = (c.pixelSize/c.magnification)*f.roiStep(1);
+            dy = (c.pixelSize/c.magnification)*f.roiStep(2);
             %
             % Correct for user-supplied OD offset and compute sum using the
             % corrected OD map.  Clamp the computed number at a minimum of
             % 0 - no negative atom numbers allowed!
             %
-            img = self.imageCorr(row,col) - bg;
-            N = sum(sum(img))*Apx./c.absorptionCrossSection.*(1+4*(c.detuning/c.gamma).^2);
+            img = self.fitdata.image - bg;
+            N = sum(sum(img))*dx*dy./c.absorptionCrossSection.*(1+4*(c.detuning/c.gamma).^2);
             N = max(N,0);
         end
         
@@ -209,7 +214,7 @@ classdef AtomCloud < handle
                 % subtracting off the background.  This works best for 2D
                 % fits
                 %
-                self.Nsum = self.sum(self.bg);
+                self.Nsum = self.sum(self.fitdata.bg);
                 %
                 % Calculate the BEC fraction and the phase-space density
                 %
@@ -309,8 +314,9 @@ classdef AtomCloud < handle
             %
             %   C = LOADOBJ(A) converts simpler object A into instance C
             if numel(a) > 1
+                self = AtomCloud.empty;
                 for nn = 1:numel(a)
-                    self(nn) = AtomCloud.loadobj(a(nn));
+                    self(nn,1) = AtomCloud.loadobj(a(nn));
                 end
             else
                 self = AtomCloud;
