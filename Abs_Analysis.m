@@ -22,7 +22,8 @@ imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'freqs',2*pi*[53,53,25],'exposureTime',14e-6,...
             'polarizationcorrection',1.5,'satOD',5);
 
-directory = '../raw-images';
+% directory = '../raw-images';
+directory = '\\TANIT\2021';
 
 %% Load raw data
 if nargin == 0 || (nargin == 1 && strcmpi(varargin{1},'last')) || (nargin == 2 && strcmpi(varargin{1},'last') && isnumeric(varargin{2}))

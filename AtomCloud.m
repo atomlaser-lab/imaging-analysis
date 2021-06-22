@@ -117,6 +117,7 @@ classdef AtomCloud < handle
                 fittype = [];
                 ex = [];
                 calcMethod = 'xy';
+                dofit = true;
                 for nn = 1:2:numel(varargin)
                     v = varargin{nn+1};
                     switch lower(varargin{nn})
@@ -126,6 +127,8 @@ classdef AtomCloud < handle
                             ex = v;
                         case 'method'
                             calcMethod = v;
+                        case 'dofit'
+                            dofit = v;
                     end
                 end
             end
@@ -134,7 +137,9 @@ classdef AtomCloud < handle
             %
             c = self.constants;
             f = self.fitdata;
-            f.fit(fittype,ex);
+            if dofit
+                f.fit(fittype,ex);
+            end
             %
             % Compute effective pixel area, extract fit parameters
             %
@@ -151,7 +156,7 @@ classdef AtomCloud < handle
                     p.gaussAmp(2) = 0;
                 end
             else
-                if p.gaussAmp < 1.5*std(f.residuals)
+                if p.gaussAmp < 1.5*std(f.residuals(:))
                     p.gaussAmp = 0;
                 end
             end

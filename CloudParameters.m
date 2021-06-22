@@ -35,14 +35,14 @@ classdef CloudParameters < handle
             %
             % Set default values
             %
-            self.offset = 0;
-            self.pos = [0,0];
-            self.gaussAmp = 0;
-            self.gaussWidth = [0,0];
-            self.becAmp = 0;
-            self.becWidth = [0,0];
-            self.cloudAngle = 0;
-            self.lin = [0,0];
+%             self.offset = 0;
+%             self.pos = [0,0];
+%             self.gaussAmp = 0;
+%             self.gaussWidth = [0,0];
+%             self.becAmp = 0;
+%             self.becWidth = [0,0];
+%             self.cloudAngle = 0;
+%             self.lin = [0,0];
             if nargin == 0
                 return;
             elseif nargin == 1
@@ -176,6 +176,51 @@ classdef CloudParameters < handle
                         v = [v,self.lin(2)];
                     case 'cloudangle'
                         v = [v,self.cloudAngle(:)'];
+                end
+            end
+        end
+        
+        function self = setFromArray(self,order,a)
+            %SETFROMARRAY Sets properties in current object from an array
+            %according to an input ordering scheme
+            %
+            %   SELF = SELF.SETFROMARRAY(ORDER,ARRAY) uses cell array ORDER
+            %   to determine which elements in ARRAY are assigned to which
+            %   properties of the current CLOUDPARAMETERS object SELF
+            for nn = 1:numel(order)
+                switch lower(order{nn})
+                    case 'offset'
+                        self.offset = a(nn);
+                    case 'pos'
+                        self.pos = a(nn);
+                    case 'posx'
+                        self.pos(1) = a(nn);
+                    case 'posy'
+                        self.pos(2) = a(nn);
+                    case 'gaussamp'
+                        self.gaussAmp = a(nn);
+                    case 'gausswidth'
+                        self.gaussWidth = a(nn);
+                    case 'gausswidthx'
+                        self.gaussWidth(1) = a(nn);
+                    case 'gausswidthy'
+                        self.gaussWidth(2) = a(nn);
+                    case 'becamp'
+                        self.becAmp = a(nn);
+                    case 'becwidth'
+                        self.becWidth = a(nn);
+                    case 'becwidthx'
+                        self.becWidth(1) = a(nn);
+                    case 'becwidthy'
+                        self.becWidth(2) = a(nn);
+                    case {'lin','linear'}
+                        self.lin = a(nn);
+                    case {'linx','linearx'}
+                        self.lin(1) = a(nn);
+                    case {'liny','lineary'}
+                        self.lin(2) = a(nn);
+                    case 'cloudangle'
+                        self.cloudAngle = a(nn);
                 end
             end
         end

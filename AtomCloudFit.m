@@ -291,7 +291,7 @@ classdef AtomCloudFit < handle
             %
             self.bg = [];
             self.residuals = [];
-            self.params = CloudParameters([]);
+            self.params = CloudParameters(0);
             switch self.fittype
                 case {'none','sum'}
                     self.params = CloudParameters();
@@ -570,9 +570,29 @@ classdef AtomCloudFit < handle
             F = Ag*exp(-x.^2./(2*xwg.^2)-y.^2./(2*ywg.^2))...
                 + Ab*((1 - s2).*(s2 <= 1)).^1.5...
                 + AtomCloudFit.bg2D(c(end-2:end),Z,[x0,y0]);
-            
         end
 
+        function F = multiFitBEC2D(c,Z)
+            numParams = 5;
+            numClouds = round((numel(c) - 3)/numParams);
+            F = zeros(size(Z(:,:,1)));
+%             xm = 0;ym = 0;
+            for nn = 1:numClouds
+                idx = (nn - 1)*numParams;
+                n0 = c(1 + idx);
+                x0 = c(2 + idx);
+                xw = c(3 + idx);
+                y0 = c(4 + idx);
+                yw = c(5 + idx);
+%                 xm = xm + x0;ym = ym + y0;
+                x = (Z(:,:,1)-x0)/xw;
+                y = (Z(:,:,2)-y0)/yw;
+                s2 = x.^2+y.^2;
+                F = F + n0*((1-s2).*(s2<=1)).^1.5;
+            end
+            F = F + AtomCloudFit.bg2D(c(end-2:end),Z,[Z(1,1,1),Z(1,1,2)]);
+        end
+        
         function guess = guessGauss1DParams(x,y)
             %GUESSGAUSS1DPARAMS Guesses 1D Gaussian parameters
             %
@@ -803,7 +823,7 @@ classdef AtomCloudFit < handle
             %
             % Extract parameters
             %
-            p = CloudParameters.convertFromArray(order,params);
+            p = CloudParameters(0).setFromArray(order,params);
             f = func(params,x);
             bg = AtomCloudFit.bg1D(params(end-1:end),x,p.pos);
         end
@@ -906,7 +926,7 @@ classdef AtomCloudFit < handle
             %
             % Extract parameters
             %
-            p = CloudParameters.convertFromArray(order,params);
+            p = CloudParameters(0).setFromArray(order,params);
             f = func(params,Position);
             bg = AtomCloudFit.bg2D(params(end-2:end),Position,p.pos);
         end

@@ -21,7 +21,6 @@ classdef AbsorptionImage < handle
         ODraw           %raw absorption image: -log(imgWithAtoms/imgWithoutAtoms)
         ODcorr          %corrected absorption image
         imgidxs         %Indicies in raw image data corresponding to data used for this instance
-        numClouds       %Number of AtomClouds in the image
     end
     
     properties(SetAccess = protected)
@@ -192,7 +191,123 @@ classdef AbsorptionImage < handle
             end
         end
         
-        function self = jointFit(self,whichClouds)
+        function self = jointFit(self,whichClouds,lbi,ubi,gi)
+            %JOINTFIT Performs a joint 2D TF fit to specified clouds.
+            %
+            %   SELF = SELF.JOINTFIT(WHICHCLOUDS) Performs a joint TF fit
+            %   using the clouds specified by the vector WHICHCLOUDS, which
+            %   indicates the indices of the CLOUDS property to use.  The
+            %   joint fit estimates parameter bounds and values, but
+            %   each value is overwritten by the corresponding value in the
+            %   CLOUDS.FITDATA obejct.
+            %
+            %   SELF = SELF.JOINTFIT(__,LB,UB,G) uses global lower and
+            %   upper bounds LB and UB and global guess G (all are
+            %   CLOUDPARAMETERS objects) to perform fit.  If not using,
+            %   set to [].  Any parameter in these objects set to [] will
+            %   not be used for the fit constraints.
+            
+            %
+            % Select clouds and initialize bounds/guesses
+            %
+            c = self.clouds(whichClouds);
+            lb = CloudParameters.empty;
+            ub = CloudParameters.empty;
+            g = CloudParameters.empty;
+            lbarray = [];
+            ubarray = [];
+            garray = [];
+            order = {'becamp','posx','becwidthx','posy','becwidthy'};
+            xmin = Inf;ymin = Inf;
+            xmax = 1;ymax = 1;
+            xstep = 1;ystep = 1;
+            for nn = 1:numel(c)
+                %
+                % Make fit objects, and overwrite the upper and lower
+                % bounds on the BEC width
+                %
+                c(nn).fitdata.makeFitObjects(self.x,self.y,self.ODcorr);
+                %
+                % Estimate bounds and initial guesses, then replace with
+                % user-supplied guesses as appropriate
+                %
+                [lb(nn),ub(nn)] = AtomCloudFit.guessBounds2D(c(nn).fitdata.x,c(nn).fitdata.y,c(nn).fitdata.image);
+                g(nn) = AtomCloudFit.guessTF2DParams(c(nn).fitdata.x,c(nn).fitdata.y,c(nn).fitdata.image);
+                if nargin > 2 && ~isempty(lbi)
+                    lb(nn).compare(lbi);
+                else
+                    lb(nn).compare(c(nn).fitdata.lb);
+                end
+                if nargin > 3 && ~isempty(ubi)
+                    ub(nn).compare(ubi);
+                else
+                    ub(nn).compare(c(nn).fitdata.ub);
+                end
+                if nargin > 4 && ~isempty(gi)
+                    g(nn).compare(gi);
+                else
+                    g(nn).compare(c(nn).fitdata.guess);
+                end
+                lbarray = [lbarray,lb(nn).convert2array(order{:})];
+                ubarray = [ubarray,ub(nn).convert2array(order{:})];
+                garray = [garray,g(nn).convert2array(order{:})];
+                % 
+                % Find pixel bounds
+                %
+                xmin = min(xmin,c(nn).fitdata.roiCol(1));
+                xmax = max(xmax,c(nn).fitdata.roiCol(2));
+                ymin = min(ymin,c(nn).fitdata.roiRow(1));
+                ymax = max(ymax,c(nn).fitdata.roiRow(2));
+                xstep = max(xstep,c(nn).fitdata.roiStep(1));
+                ystep = max(ystep,c(nn).fitdata.roiStep(2));
+            end
+            %
+            % Create position grid and data
+            %
+            row = ymin:ystep:ymax;
+            col = xmin:xstep:xmax;
+            xx = self.x(col);
+            yy = self.y(row);
+            [X,Y] = meshgrid(xx,yy);
+            Z = cat(3,X,Y);
+            data = self.ODcorr(row,col);
+            %
+            % Append background terms
+            %
+            lbarray = [lbarray,-0.05,-0.02/range(xx),-0.02/range(yy)];
+            ubarray = [ubarray,+0.05,+0.02/range(xx),+0.02/range(yy)];
+            garray = [garray,0,0,0];
+            %
+            % Perform fit
+            %
+            options = AtomCloudFit.getoptions;
+            func = @(c,pos) AtomCloudFit.multiFitBEC2D(c,pos);
+            params = AtomCloudFit.attemptFit(func,garray,Z,data,lbarray,ubarray,options);
+            p0 = [Z(1,1,1),Z(1,1,2)];
+            [X,Y] = meshgrid(self.x,self.y);
+            Znew = cat(3,X,Y);
+            f = func(params,Znew);
+            bgWrong = AtomCloudFit.bg2D(params(end-2:end),Znew);
+            bg = AtomCloudFit.bg2D(params(end-2:end),Znew,p0);
+            f = f - bgWrong + bg;
+            res = self.ODcorr - f;
+            %
+            % Extract parameters
+            %
+            for nn = 1:numel(c)
+                idx = ((nn-1)*5 + 1):(nn*5);
+                c(nn).fitdata.params = CloudParameters(0).setFromArray(order,params(idx));
+                [row,col] = c(nn).fitdata.makeROIVectors;
+                c(nn).fitdata.residuals = res(row,col);
+                c(nn).fitdata.bg = bg(row,col);
+                c(nn).fitdata.xfit = sum(f(row,col),1);
+                c(nn).fitdata.yfit = sum(f(row,col),2);
+                %
+                % This extracts parameters without doing the single-cloud
+                % fit
+                %
+                c(nn).fit('dofit',false);
+            end
             
         end
 
@@ -207,10 +322,11 @@ classdef AbsorptionImage < handle
             if numel(varargin) == 1
                 tmp = zeros(numel(self),numel(self(1).clouds));
                 for nn = 1:numel(self)
-                    for mm = 1:numel(self(1).clodus)
+                    for mm = 1:numel(self(1).clouds)
                         tmp(nn,mm) = self(nn).clouds(mm).get(varargin{1});
                     end
                 end
+                varargout{1} = tmp;
             else
                 for nn = 1:numel(self)
                     for mm = 1:numel(varargin)
