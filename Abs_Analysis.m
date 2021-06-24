@@ -4,13 +4,15 @@ atomType = 'Rb87';
 % tof = varargin{2};
 tof = 216.35e-3;%camera two
 
-dispOD = [0,.15];
+dispOD = [0,.25];
 plotOpt = 0;
 plotROI = 0;
-useFilt = 1;
+useFilt = 0;
 filtWidth = 50e-6;
 %% Imaging Second spot
-roiRow = [250,500;
+% roiRow = [150,500];
+% roiCol = repmat([550,850],1,1);
+roiRow = [150,500;
           500,750];
 roiCol = repmat([550,850],2,1);
 roiStep = 2;
@@ -23,7 +25,8 @@ imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'polarizationcorrection',1.5,'satOD',5);
 
 % directory = '../raw-images';
-directory = '\\TANIT\2021';
+% directory = '\\TANIT\2021';
+directory = 'E:\RawImages\2021';
 
 %% Load raw data
 if nargin == 0 || (nargin == 1 && strcmpi(varargin{1},'last')) || (nargin == 2 && strcmpi(varargin{1},'last') && isnumeric(varargin{2}))

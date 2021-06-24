@@ -35,23 +35,27 @@ classdef CloudParameters < handle
             %
             % Set default values
             %
-%             self.offset = 0;
-%             self.pos = [0,0];
-%             self.gaussAmp = 0;
-%             self.gaussWidth = [0,0];
-%             self.becAmp = 0;
-%             self.becWidth = [0,0];
-%             self.cloudAngle = 0;
-%             self.lin = [0,0];
             if nargin == 0
                 return;
             elseif nargin == 1
                 %
                 % Set all parameters to input
                 %
-                p = properties(self);
-                for nn = 1:numel(p)
-                    self.(p{nn}) = varargin{1};
+                if isempty(varargin{1})   
+                    p = properties(self);
+                    for nn = 1:numel(p)
+                        self.(p{nn}) = [];
+                    end
+                else
+                    v = varargin{1};
+                    self.offset = v;
+                    self.pos = [v,v];
+                    self.gaussAmp = v;
+                    self.gaussWidth = [v,v];
+                    self.becAmp = v;
+                    self.becWidth = [v,v];
+                    self.cloudAngle = v;
+                    self.lin = [v,v];
                 end
             elseif numel(varargin) == 2 && isa(varargin{1},'CloudParameters') && isa(varargin{2},'CloudParameters')
                 %
