@@ -504,8 +504,8 @@ classdef AbsorptionImage < handle
             % ROI
             %
             if ~iscell(plotROI) && plotROI
-                xlim(self.cloud(1).fitdata.roiCol);
-                ylim(self.cloud(1).fitdata.roiRow);
+                xlim(self.clouds(1).fitdata.roiCol);
+                ylim(self.clouds(1).fitdata.roiRow);
             elseif iscell(plotROI)
                 xlim(plotROI{2});
                 ylim(plotROI{1});
