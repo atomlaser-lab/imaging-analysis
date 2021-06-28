@@ -19,6 +19,7 @@ classdef AtomCloudFit < handle
         
         fittype     %The type of fit to use
         fitfunc     %The fit function that is used
+        residuals   %The fit residuals
         params      %The parameters as a CloudParameters object
     end
 
@@ -230,27 +231,37 @@ classdef AtomCloudFit < handle
                 case 'gauss1d'
                     [px,self.xfit] = self.fitGauss1D(self.x,self.xdata,ex);
                     [py,self.yfit] = self.fitGauss1D(self.y,self.ydata,ex);
+                    self.residuals(:,1) = self.xdata(:) - self.xfit(:);
+                    self.residuals(:,2) = self.ydata(:) - self.yfit(:);
                     self.params = CloudParameters(px,py);
                 case 'twocomp1d'
                     [px,self.xfit] = self.fit2Comp1D(self.x,self.xdata,ex);
                     [py,self.yfit] = self.fit2Comp1D(self.y,self.ydata,ex);
+                    self.residuals(:,1) = self.xdata(:) - self.xfit(:);
+                    self.residuals(:,2) = self.ydata(:) - self.yfit(:);
                     self.params = CloudParameters(px,py);
                 case 'tf1d'
                     [px,self.xfit] = self.fitTF1D(self.x,self.xdata,ex);
                     [py,self.yfit] = self.fitTF1D(self.y,self.ydata,ex);
+                    self.residuals(:,1) = self.xdata(:) - self.xfit(:);
+                    self.residuals(:,2) = self.ydata(:) - self.yfit(:);
                     self.params = CloudParameters(px,py);
                 case 'gauss2d'
                     [self.params,f] = self.fitGauss2D(self.x,self.y,self.image,false,ex);
                     self.xfit = sum(f,1);self.yfit = sum(f,2);
+                    self.residuals = self.image - f;
                 case 'gauss2dangle'
                     [self.params,f] = self.fitGauss2D(self.x,self.y,self.image,true,ex);
                     self.xfit = sum(f,1);self.yfit = sum(f,2);
+                    self.residuals = self.image - f;
                 case 'twocomp2d'
                     [self.params,f] = self.fitTwoComp2D(self.x,self.y,self.image,ex);
                     self.xfit = sum(f,1);self.yfit = sum(f,2);
+                    self.residuals = self.image - f;
                 case 'tf2d'
                     [self.params,f] = self.fitTF2D(self.x,self.y,self.image,ex);
                     self.xfit = sum(f,1);self.yfit = sum(f,2);
+                    self.residuals = self.image - f;
                 otherwise
                     error('Fit type %s not supported',self.fittype);
             end
@@ -572,8 +583,12 @@ classdef AtomCloudFit < handle
                 includeRotation = false;
             end
             options = AtomCloudFit.getoptions;
-            lb = [0,0,0,0,0,-0.1/range(x),-0.1/range(y),-0.25];
-            ub = [10,max(x),range(x)/1.5,max(y),range(y)/1.5,0.1/range(x),0.1/range(y),0.25];
+            xmin = min(x) + 0.25*range(x)*0;
+            xmax = max(x) - 0.25*range(x)*0;
+            ymin = min(y) + 0.25*range(y)*0;
+            ymax = max(y) - 0.25*range(y)*0;
+            lb = [0 ,xmin,6e-6        ,ymin,6e-6        ,-0.1/range(x),-0.1/range(y),-0.25];
+            ub = [10,xmax,range(x)/1.5,ymax,range(y)/1.5,0.1/range(x) ,0.1/range(y) ,0.25];
             gx = AtomCloudFit.guessGaussParams(x,sum(z,1));
             gy = AtomCloudFit.guessGaussParams(y,sum(z,2));
             amp = max(z(:));

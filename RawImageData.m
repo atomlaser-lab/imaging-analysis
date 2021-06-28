@@ -10,9 +10,10 @@ classdef RawImageData < handle
     properties(Constant, Hidden=true)
 %         SIZE = [1036,1384];
 %         SIZE = [1024,1216];  %i.e. [height, width]
-        SIZE = [512,1216];
+        DEFAULT_SIZE = [512,1216];
         DEFAULT_DIRECTORY = 'D:\RawImages\2020\12December\';
         DEFAULT_NUM_IMAGES = 2;
+        DEFAULT_DATATYPE = 'raw8';
         FILE_EXT = '.raw';
     end
 
@@ -70,7 +71,7 @@ classdef RawImageData < handle
                 len = self.DEFAULT_NUM_IMAGES;
                 idx = 1;
                 dims = self.DEFAULT_SIZE;
-                dataType = 'mono16';
+                dataType = self.DEFAULT_DATATYPE;              %what is this doing if you set it below?
                 for nn = 1:2:numel(varargin)
                     cmd = lower(varargin{nn});
                     switch cmd
@@ -114,7 +115,7 @@ classdef RawImageData < handle
             %   given by DIMS
             %
             if nargin < 2
-                dataType = 'mono16';
+                dataType = self.DEFAULT_DATATYPE;
             end
             if nargin < 3
                 dims = self.DEFAULT_SIZE;
@@ -255,7 +256,7 @@ classdef RawImageData < handle
             len = RawImageData.DEFAULT_NUM_IMAGES;
             directory = RawImageData.DEFAULT_DIRECTORY;
             dims = RawImageData.DEFAULT_SIZE;
-            dataType = 'mono16';
+            dataType = RawImageData.DEFAULT_DATATYPE;
             %
             % Parse inputs
             %

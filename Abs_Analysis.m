@@ -19,10 +19,14 @@ imgconsts = AtomImageConstants(atomType,'exposureTime',100e-6,'tof',tof,...
             'freqs',2*pi*[40,23,8],'detuning',0,... %set detuning here
             'polarizationcorrection',1.5,'satOD',3);
 
-directory = 'C:\Users\Ryan\MATLAB\spatial-fringes-analysis\images';
+directory = 'D:\RawImages\2020\12December';
 
 %% Load raw data
+
 if nargin == 0 || (nargin == 1 && strcmpi(varargin{1},'last')) || (nargin == 2 && strcmpi(varargin{1},'last') && isnumeric(varargin{2}))
+	if length(varargin) < 2
+        varargin{2} = 1
+    end
     %
     % If no input arguments are given, or the only argument is 'last', or
     % if the arguments are 'last' and a numeric array, then load the last

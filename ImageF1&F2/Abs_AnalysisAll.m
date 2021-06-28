@@ -22,7 +22,6 @@ imgconsts = AtomImageConstants(atomType,'exposureTime',100e-6,'tof',tof,...
             'polarizationcorrection',1.5,'satOD',3);
 
 directory = 'D:\RawImages\2020\12December\';
-% directory = 'Z:';
 
 %% Load raw data
 %

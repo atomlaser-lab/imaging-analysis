@@ -224,6 +224,18 @@ classdef AbsorptionImage < handle
             dx = diff(f.x(1:2));dy = diff(f.y(1:2));
             p = f.params;
             self.gaussWidth = p.gaussWidth;
+                %% Check that the fit isn't silly
+                %
+                %this subtracts the fit from the x-data to obtain the
+                %standard deviation of the noise. It then checks to see if
+                %the fitted amplitude is at least 3 times this noise. If it
+                %is not, the fit amplitude is set to zero
+                %
+                if p.gaussAmp < 1.*std(f.residuals(:)) %normally 1.5
+                   p.gaussAmp = 0;
+                end
+                %% end of check
+                             
             self.pos = p.pos;
             self.becWidth = p.becWidth;
             self.cloudAngle = p.cloudAngle;
@@ -281,6 +293,10 @@ classdef AbsorptionImage < handle
                 %
                 if ~f.is1D()
                     self.Nsum = self.sum(f.params.offset);
+                    % if the fit is bad, there are no atoms
+                    if p.gaussAmp == 0
+                        self.Nsum = 0;
+                    end
                 else
                     self.Nsum = self.sum;
                 end
