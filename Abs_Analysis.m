@@ -4,17 +4,18 @@ atomType = 'Rb87';
 % tof = varargin{2};
 tof = 216.35e-3;%camera two
 
-dispOD = [0,.25];
+dispOD = [0,.15];
 plotOpt = 0;
 plotROI = 0;
-useFilt = 0;
+useFilt = 1;
 filtWidth = 50e-6;
+useJointFit = 0;
 %% Imaging Second spot
 % roiRow = [150,500];
 % roiCol = repmat([550,850],1,1);
-roiRow = [150,500;
-          500,750];
-roiCol = repmat([550,850],2,1);
+roiRow = [150,470;
+          470,800];
+roiCol = repmat([550,850],size(roiRow,1),1);
 roiStep = 2;
 fittype = 'tf2d';
 
@@ -25,8 +26,8 @@ imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'polarizationcorrection',1.5,'satOD',5);
 
 % directory = '../raw-images';
-% directory = '\\TANIT\2021';
-directory = 'E:\RawImages\2021';
+directory = '\\TANIT\2021';
+% directory = 'E:\RawImages\2021';
 
 %% Load raw data
 if nargin == 0 || (nargin == 1 && strcmpi(varargin{1},'last')) || (nargin == 2 && strcmpi(varargin{1},'last') && isnumeric(varargin{2}))
@@ -93,7 +94,11 @@ for jj = 1:numImages
     %
     % Fit clouds
     %
-    img(jj).fit;
+    if useJointFit
+        img(jj).jointFit([1,2]);
+    else
+        img(jj).fit;
+    end
         
     %% Plotting
     if plotOpt
