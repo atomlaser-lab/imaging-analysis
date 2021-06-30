@@ -98,7 +98,7 @@ classdef RawImageData < handle
                 
                 if ~iscell(filenames) && strcmpi(filenames,'last')
                     [self.files,self.status] = RawImageData.getLastFilenames(self.directory,len,idx);
-                elseif iscell(filenames)
+                elseif iscell(filenames) || isstring(filenames)
                     self.files = RawImageData.getFileInfo(self.directory,filenames);
                 elseif isstruct(filenames)
                     self.files = filenames;
@@ -172,9 +172,15 @@ classdef RawImageData < handle
             %STRUCT Converts object instance into structure
             %
             %   S = RAW.STRUCT() converts object RAW into structure S
-            s.directory = self.directory;
-            s.files = self.files;
-            s.images = self.images;
+            if numel(self) > 1
+                for nn = 1:numel(self)
+                    s(nn,1) = self(nn).struct;
+                end
+            else
+                s.directory = self.directory;
+                s.files = self.files;
+                s.images = uint16(self.images);
+            end
         end
         
         function s = saveobj(self)
@@ -183,20 +189,21 @@ classdef RawImageData < handle
             %   S = RAW.SAVEOBJ() creates simpler structure S for saving
             %   object RAW
             s = self.struct;
-            s.images = uint16(s.images);
         end
     end
 
     methods(Static)
-        function b = loadobj(a)
+        function raw = loadobj(a)
             %LOADOBJ Converts saved structure into object instance
             %
             %   RAW = LOADOBJ(A) converts saved structure A representing an
             %   instance of RAWIMAGEDATA into object instance RAW
-            b = RawImageData;
-            b.directory = a.directory;
-            b.files = a.files;
-            b.images = double(a.images);
+            raw = RawImageData.empty;
+            for nn = 1:numel(a)
+                raw(nn,1).directory = a(nn).directory;
+                raw(nn,1).files = a(nn).files;
+                raw(nn,1).images = double(a(nn).images);
+            end
         end
         
         function [f,msg] = getLastFilenames(directory,len,idx)
@@ -246,7 +253,12 @@ classdef RawImageData < handle
             %   information for FILENAMES in DIRECTORY
             %
             for nn = 1:numel(filenames)
-                files(nn) = dir(fullfile(directory,filenames{nn})); %#ok<*AGROW>
+                if iscell(filenames)
+                    fname = filenames{nn};
+                elseif isstring(filenames)
+                    fname = filenames(nn);
+                end
+                files(nn) = dir(fullfile(directory,fname)); %#ok<*AGROW>
             end
             [~,k] = sortrows(datevec([files.datenum]));
             f = files(k);
@@ -272,11 +284,19 @@ classdef RawImageData < handle
             %
             %   'filenames' should be a cell array of file names
             %   corresponding to one image set.  If more than one image
-            %   set, it should be a cell array of cell arrays.
+            %   set (N sets, for example), it should be a cell array of
+            %   length N of cell arrays of length len
             %
             %   'filenames' can also be a cell array of struct arrays (1
             %   cell element for each image set) or an array of structs
             %   that containing file information
+            %
+            %   'filenames' can also be an array of structs which MUST have
+            %   a "name" field. For N image sets, it should be N*len long
+            %
+            %   'filenames' can also be an array of strings. For N image
+            %   sets, each set of length len, the array should be N*len
+            %   long
             %
             %   'length' is the length of each image set.
             %
@@ -320,7 +340,7 @@ classdef RawImageData < handle
                 end
             end
             
-            if ischar(filenames) && strcmpi(filenames,'last')
+            if (ischar(filenames) || (isstring(filenames) && numel(filenames) == 1)) && strcmpi(filenames,'last')
                 %
                 % Load the last images according to the index
                 %
@@ -331,8 +351,15 @@ classdef RawImageData < handle
                 end
             elseif iscell(filenames)
                 %
-                % Load files as a cell array
+                % Load files as a cell array. For N image sets, this should
+                % be a cell array of length N with each cell being a cell
+                % array containing the file names of each raw image file
+                % (so it should be len long). If one image set, it can be
+                % just the one cell array of length len
                 %
+                if numel(filenames) == len
+                    filenames{1} = filenames;
+                end
                 numImages = numel(filenames);
                 raw(numImages,1) = RawImageData;
                 for mm = 1:numImages
@@ -347,6 +374,18 @@ classdef RawImageData < handle
                 if ~isfield(filenames(1),'name')
                     error('File structures must have the ''name'' field');
                 end
+                numImages = floor(numel(filenames)/len);
+                raw(numImages,1) = RawImageData;
+                for mm = 1:numImages
+                    fileidx = ((mm-1)*len+1):(mm*len);
+                    raw(mm).load('filenames',filenames(fileidx),'directory',directory,'len',len,'dims',dims,'datatype',dataType);
+                end
+            elseif isstring(filenames)
+                %
+                % If files are as an array of strings, then assume that it
+                % is arranged as
+                % [set1_file1,set1_file2,set2_file1,set2_file2,...]
+                %
                 numImages = floor(numel(filenames)/len);
                 raw(numImages,1) = RawImageData;
                 for mm = 1:numImages

@@ -8,6 +8,7 @@ plotOpt = 0;
 plotROI = 1;
 useFilt = 0;
 filtWidth = 50e-6;
+useJointFit = 0;
 %% Imaging first spot
 roiCol = [25,400];
 roiRow = repmat([500,750],size(roiCol,1),1);
@@ -30,8 +31,8 @@ imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'polarizationcorrection',1.5,'satOD',5);
 
 % directory = '../raw-images';
-% directory = '\\TANIT\2021';
-directory = 'E:\RawImages\2021';
+directory = '\\TANIT\2021';
+% directory = 'E:\RawImages\2021';
 
 %% Load raw data
 if nargin == 0 || (nargin == 1 && strcmpi(varargin{1},'last')) || (nargin == 2 && strcmpi(varargin{1},'last') && isnumeric(varargin{2}))
@@ -98,7 +99,11 @@ for jj = 1:numImages
     %
     % Fit clouds
     %
-    img(jj).fit;
+    if useJointFit
+        img(jj).jointFit([1,2]);
+    else
+        img(jj).fit;
+    end
         
     %% Plotting
     if plotOpt
