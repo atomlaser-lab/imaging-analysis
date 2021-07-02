@@ -385,9 +385,9 @@ classdef AbsorptionImage < handle
                 % vertically-oriented plot
                 %
                 f = self.clouds(nn).fitdata;
-                h = plot(f.ydata,-f.y,'.-');
+                plot(f.ydata,-f.y,'.-');
                 hold on;
-                plot(f.yfit,-f.y,'-','Color',h.Color,'linewidth',1);
+                plot(f.yfit,-f.y,'-','linewidth',1);
             end
             if numel(self.clouds) == 1
                 %
@@ -415,7 +415,7 @@ classdef AbsorptionImage < handle
                 f = self.clouds(nn).fitdata;
                 h = plot(f.x,f.xdata,'.-');
                 hold on;
-                plot(f.x,f.xfit,'-','Color',h.Color,'linewidth',1);
+                plot(f.x,f.xfit,'-','linewidth',1);
             end
             if numel(self.clouds) == 1
                 %

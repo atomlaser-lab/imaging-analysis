@@ -3,26 +3,26 @@ function img = Abs_Analysis(varargin)
 atomType = 'Rb87';
 tof = 35e-3;%camera two
 
-dispOD = [0,2];
+dispOD = [0,0.5];
 plotOpt = 0;
-plotROI = 1;
+plotROI = 0;
 useFilt = 0;
 filtWidth = 50e-6;
 useJointFit = 0;
 %% Imaging first spot
-roiCol = [25,400];
-roiRow = repmat([500,750],size(roiCol,1),1);
-roiStep = 2;
-fittype = '2comp2d';
+% roiCol = [25,400];
+% roiRow = repmat([500,750],size(roiCol,1),1);
+% roiStep = 2;
+% fittype = '2comp2d';
 
 %% Imaging Second spot
 % roiRow = [150,500];
 % roiCol = repmat([550,850],1,1);
-% roiRow = [150,500;
-%           500,750];
-% roiCol = repmat([550,850],2,1);
-% roiStep = 2;
-% fittype = 'tf2d';
+roiRow = [150,500;
+          500,750];
+roiCol = repmat([550,850],2,1);
+roiStep = 2;
+fittype = 'tf2d';
 
 %% Imaging parameters
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
