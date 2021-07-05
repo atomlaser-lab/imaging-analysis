@@ -3,31 +3,35 @@ function img = Abs_Analysis(varargin)
 atomType = 'Rb87';
 tof = 35e-3;%camera two
 
-dispOD = [0,0.5];
+dispOD = [0,0.25];
 plotOpt = 0;
 plotROI = 0;
-useFilt = 0;
+useFilt = 1;
 filtWidth = 50e-6;
 useJointFit = 0;
 %% Imaging first spot
-% roiCol = [25,400];
-% roiRow = repmat([500,750],size(roiCol,1),1);
+% roiCol = [10,300];
+% roiRow = repmat([500,800],size(roiCol,1),1);
 % roiStep = 2;
-% fittype = '2comp2d';
+% fittype = 'gauss2d';
 
 %% Imaging Second spot
-% roiRow = [150,500];
-% roiCol = repmat([550,850],1,1);
-roiRow = [150,500;
-          500,750];
-roiCol = repmat([550,850],2,1);
+roiRow = [150,500];
+roiCol = repmat([550,850],1,1);
+% roiRow = [150,450;
+%           450,750];
+% roiCol = repmat([550,850],2,1);
+% roiRow = [50,250;
+%           250,500;
+%           500,750];
+% roiCol = repmat([550,850],3,1);
 roiStep = 2;
 fittype = 'tf2d';
 
 %% Imaging parameters
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'pixelsize',6.45e-6,'magnification',0.99,...
-            'freqs',2*pi*[53,53,25],'exposureTime',30e-6,...
+            'freqs',2*pi*[53,53,25],'exposureTime',14e-6,...
             'polarizationcorrection',1.5,'satOD',5);
 
 % directory = '../raw-images';
