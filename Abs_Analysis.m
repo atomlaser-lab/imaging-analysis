@@ -1,37 +1,42 @@
 function img = Abs_Analysis(varargin)
 
 atomType = 'Rb87';
-tof = 35e-3;%camera two
+tof = 25e-3;
 
-dispOD = [0,0.25];
+dispOD = [0,0.5];
 plotOpt = 0;
 plotROI = 0;
-useFilt = 1;
+useFilt = 0;
 filtWidth = 50e-6;
 useJointFit = 0;
 %% Imaging first spot
-% roiCol = [10,300];
+% roiCol = [10,400];
 % roiRow = repmat([500,800],size(roiCol,1),1);
 % roiStep = 2;
-% fittype = 'gauss2d';
+% fittype = '2comp2d';
 
 %% Imaging Second spot
-roiRow = [150,500];
-roiCol = repmat([550,850],1,1);
-% roiRow = [150,450;
-%           450,750];
-% roiCol = repmat([550,850],2,1);
+% roiRow = [150,500];
+% roiCol = repmat([550,850],1,1);
+roiRow = [100,450;
+          450,750];
+roiCol = repmat([550,850],2,1);
 % roiRow = [50,250;
 %           250,500;
 %           500,750];
 % roiCol = repmat([550,850],3,1);
-roiStep = 2;
+roiStep = 4;
 fittype = 'tf2d';
+
+%% Fit parameters
+% lb = CloudParameters('becwidth',[650e-6,650e-6]);
+% ub = CloudParameters('becwidth',[850e-6,850e-6]);
+% guess = CloudParameters('becwidth',[750e-6,750e-6]);
 
 %% Imaging parameters
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'pixelsize',6.45e-6,'magnification',0.99,...
-            'freqs',2*pi*[53,53,25],'exposureTime',14e-6,...
+            'freqs',2*pi*[53,53,25],'exposureTime',15e-6,...
             'polarizationcorrection',1.5,'satOD',5);
 
 % directory = '../raw-images';
@@ -84,6 +89,8 @@ for jj = 1:numImages
     img(jj).raw.copy(raw(jj));
     img(jj).setClouds(size(roiRow,1));
     for nn = 1:numel(img(jj).clouds)
+%         img(jj).clouds(nn).fitdata.set('roirow',roiRow(nn,:),'roiCol',roiCol(nn,:),...
+%             'roiStep',roiStep,'fittype',fittype,'lb',lb,'ub',ub,'guess',guess);
         img(jj).clouds(nn).fitdata.set('roirow',roiRow(nn,:),'roiCol',roiCol(nn,:),...
             'roiStep',roiStep,'fittype',fittype);
     end
@@ -121,14 +128,17 @@ for jj = 1:numImages
             %
             % Plot only the absorption data in a grid when there is more than one image
             %
-            if jj == 1
-                figure(3);clf;
-                dimSubPlot=ceil(sqrt(numImages));
-            end
-            
-            figure(3);
-            subplot(dimSubPlot,dimSubPlot,jj);
-            img(jj).plotAbsData(dispOD,plotROI);
+%             if jj == 1
+%                 figure(3);clf;
+%                 dimSubPlot=ceil(sqrt(numImages));
+%             end
+%             
+%             figure(3);
+%             subplot(dimSubPlot,dimSubPlot,jj);
+%             img(jj).plotAbsData(dispOD,plotROI);
+            figure(3);clf;
+            img(jj).plotAllData(dispOD,plotROI);
+            pause(0.01);
         end
     end
     
