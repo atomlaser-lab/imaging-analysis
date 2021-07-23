@@ -95,8 +95,8 @@ classdef AtomCloudFit < handle
                             self.ub = v;
                         case 'guess'
                             self.guess = v;
-                        otherwise
-                            error('Unsupported parameter %s',p);
+%                         otherwise
+%                             error('Unsupported parameter %s',p);
                     end
                 end
             end
@@ -418,6 +418,26 @@ classdef AtomCloudFit < handle
             z = c(1) + c(2)*(X - p0(1)) + c(3)*(Y - p0(2));
         end
         
+        function z = bg2Dquad(c,pos,p0)
+            %BG2D defines a 2D background function comprising an offset and
+            %a linearly varying term in each of the x and y directions
+            %
+            %   F = BG2D(C,POS) returns a 2D background term where C(1) is
+            %   a constant offset, C(2) is the first derivative along X,
+            %   and C(3) is the first derivative along Y. POS is an NxNx2
+            %   array where POS(:,:,1) is the gridded X values and
+            %   POS(:,:,2) is the gridded Y values
+            %
+            %   F = BG1D(__,P0) shifts the linear terms to be zero at P0
+            X = pos(:,:,1);
+            Y = pos(:,:,2);
+            if nargin < 3
+                p0 = [0,0];
+            end
+            z = c(1) + c(2)*(X - p0(1)) + c(3)*(Y - p0(2))...
+                + c(4)*(X - p0(1)).^2 + c(5)*(Y - p0(2)).^2;
+        end
+        
         function y = gauss1D(c,pos)
             %GAUSS1D defines a 1D gaussian function with offset and linear
             %offset term
@@ -710,12 +730,16 @@ classdef AtomCloudFit < handle
             %   [LB,UB] = GUESSBOUNDS2D(X,Y,Z) Guesses upper and lower
             %   bounds UB and LB given coordinate data X and Y and ordinate
             %   data Y.  UB and LB are returned as CLOUDPARAMETER objects
+            minx = min(x) + range(x)*0.15;
+            maxx = max(x) - range(x)*0.15;
+            miny = min(y) + range(y)*0.15;
+            maxy = max(y) - range(y)*0.15;
             lb = CloudParameters('offset',-0.1,'gaussamp',0,'becamp',0,...
-                'pos',[min(x),min(y)],'gausswidth',5*abs([diff(x(1:2)),diff(y(1:2))]),...
+                'pos',[minx,miny],'gausswidth',5*abs([diff(x(1:2)),diff(y(1:2))]),...
                 'becwidth',5*abs([diff(x(1:2)),diff(y(1:2))]),'lin',-0.1./[range(x),range(y)],...
                 'cloudangle',-pi/6);
             ub = CloudParameters('offset',0.1,'gaussamp',10,'becamp',10,...
-                'pos',[max(x),max(y)],'gausswidth',[range(x),range(y)],...
+                'pos',[maxx,maxy],'gausswidth',[range(x),range(y)],...
                 'becwidth',[range(x),range(y)],'lin',+10./[range(x),range(y)],...
                 'cloudangle',pi/6);
         end

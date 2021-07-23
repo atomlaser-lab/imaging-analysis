@@ -219,7 +219,11 @@ classdef AtomCloud < handle
                 % subtracting off the background.  This works best for 2D
                 % fits
                 %
-                self.Nsum = self.sum(self.fitdata.bg);
+                if ~f.is1D()
+                    self.Nsum = self.sum(self.fitdata.bg);
+                else
+                    self.Nsum = self.sum();
+                end
                 %
                 % Calculate the BEC fraction and the phase-space density
                 %
