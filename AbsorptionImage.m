@@ -320,18 +320,18 @@ classdef AbsorptionImage < handle
             %   of properties 'NAME1', 'NAME2', etc.  Valid values for 'NAME1',
             %   etc correspond to property names in the AbsorptionImage class.
             if numel(varargin) == 1
-                tmp = zeros(numel(self),numel(self(1).clouds));
+                argdim = numel(self(1).clouds(1).(varargin{1}));
+                tmp = zeros(numel(self),numel(self(1).clouds),argdim);
                 for nn = 1:numel(self)
                     for mm = 1:numel(self(1).clouds)
-                        tmp(nn,mm) = self(nn).clouds(mm).get(varargin{1});
+                        tmp(nn,mm,:) = reshape(self(nn).clouds(mm).get(varargin{1}),[1,1,argdim]);
                     end
                 end
                 varargout{1} = tmp;
             else
-                for nn = 1:numel(self)
-                    for mm = 1:numel(varargin)
-                        varargout{mm}(nn,:) = self(nn).clouds(1).(varargin{mm});
-                    end
+                for mm = 1:numel(varargin)
+                    tmp = self.get(varargin{mm});
+                    varargout{mm} = tmp;
                 end
             end
         end
@@ -527,8 +527,8 @@ classdef AbsorptionImage < handle
             %   LABEL and a number string with parameters NUMBER
             %
             imgNum = self.raw.getImageNumbers;
-            labelCell = {'Image','x width/um','y width/um','Nsum' ,'Nfit' ,'BEC %','PeakOD','T/nk' ,'PSD'};
-            formatCell = {'% 5.1f','%0.3e'     ,'%0.3e'     ,'%0.2e','%0.2e','%0.2f','%0.2e' ,'%0.2e','%0.2e'};
+            labelCell = {'Image   ','x width/um','y width/um','Nsum' ,'Nfit' ,'BEC %','PeakOD','T/nk' ,'PSD'};
+            formatCell = {'% 7.1f','%0.3e'     ,'%0.3e'     ,'%0.2e','%0.2e','%0.2f','%0.2e' ,'%0.2e','%0.2e'};
             numberStrTotal = {};
             for nn = 1:numel(self.clouds)
                 c = self.clouds(nn);
