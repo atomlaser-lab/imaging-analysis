@@ -16,27 +16,23 @@ useJointFit = 0;
 % fittype = '2comp2d';
 
 %% Imaging Second spot
-% roiRow = [150,500];
-% roiCol = repmat([550,850],1,1);
-roiRow = [100,450;
-          450,750];
-roiCol = repmat([550,850],2,1);
-% roiRow = [50,250;
-%           250,500;
-%           500,750];
-% roiCol = repmat([550,850],3,1);
+roiRow = [150,550];
+roiCol = repmat([550,850],1,1);
+% roiRow = [100,470;
+%           470,800];
+% roiCol = repmat([550,850],2,1);
 roiStep = 4;
 fittype = 'tf2d';
 
 %% Fit parameters
-% lb = CloudParameters('becwidth',[650e-6,650e-6]);
-% ub = CloudParameters('becwidth',[850e-6,850e-6]);
-% guess = CloudParameters('becwidth',[750e-6,750e-6]);
+lb = CloudParameters('becwidth',[650e-6,650e-6]);
+ub = CloudParameters('becwidth',[850e-6,850e-6]);
+guess = CloudParameters('becwidth',[750e-6,750e-6]);
 
 %% Imaging parameters
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
             'pixelsize',6.45e-6,'magnification',0.99,...
-            'freqs',2*pi*[53,53,25],'exposureTime',15e-6,...
+            'freqs',2*pi*[53,53,25],'exposureTime',30e-6,...
             'polarizationcorrection',1.5,'satOD',5);
 
 % directory = '../raw-images';
@@ -89,10 +85,10 @@ for jj = 1:numImages
     img(jj).raw.copy(raw(jj));
     img(jj).setClouds(size(roiRow,1));
     for nn = 1:numel(img(jj).clouds)
-%         img(jj).clouds(nn).fitdata.set('roirow',roiRow(nn,:),'roiCol',roiCol(nn,:),...
-%             'roiStep',roiStep,'fittype',fittype,'lb',lb,'ub',ub,'guess',guess);
         img(jj).clouds(nn).fitdata.set('roirow',roiRow(nn,:),'roiCol',roiCol(nn,:),...
-            'roiStep',roiStep,'fittype',fittype);
+            'roiStep',roiStep,'fittype',fittype,'lb',lb,'ub',ub,'guess',guess);
+%         img(jj).clouds(nn).fitdata.set('roirow',roiRow(nn,:),'roiCol',roiCol(nn,:),...
+%             'roiStep',roiStep,'fittype',fittype,'method','y');
     end
     %
     % Create image

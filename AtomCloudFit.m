@@ -95,8 +95,8 @@ classdef AtomCloudFit < handle
                             self.ub = v;
                         case 'guess'
                             self.guess = v;
-                        otherwise
-                            error('Unsupported parameter %s',p);
+%                         otherwise
+%                             error('Unsupported parameter %s',p);
                     end
                 end
             end
@@ -610,7 +610,7 @@ classdef AtomCloudFit < handle
                 s2 = x.^2+y.^2;
                 F = F + n0*((1-s2).*(s2<=1)).^1.5;
             end
-            F = F + AtomCloudFit.bg2Dquad(c(end-4:end),Z,[Z(1,1,1),Z(1,1,2)]);
+            F = F + AtomCloudFit.bg2D(c(end-2:end),Z,[Z(1,1,1),Z(1,1,2)]);
         end
         
         function guess = guessGauss1DParams(x,y)

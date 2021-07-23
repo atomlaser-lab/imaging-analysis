@@ -274,8 +274,8 @@ classdef AbsorptionImage < handle
             %
             % Append background terms
             %
-            lbarray = [lbarray,-0.05,-0.02/range(xx),-0.02/range(yy)];
-            ubarray = [ubarray,+0.05,+0.02/range(xx),+0.02/range(yy)];
+            lbarray = [lbarray,-0.15,-0.02/range(xx),-0.02/range(yy)];
+            ubarray = [ubarray,+0.25,+0.02/range(xx),+0.02/range(yy)];
             garray = [garray,0,0,0];
             %
             % Perform fit
