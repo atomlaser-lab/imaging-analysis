@@ -1,33 +1,33 @@
 function img = Abs_Analysis(varargin)
 
 atomType = 'Rb87';
-tof = 25e-3;
+tof = 30e-3;
 
-dispOD = [0,0.5];
+dispOD = [0,1];
 plotOpt = 0;
 plotROI = 0;
 useFilt = 0;
 filtWidth = 50e-6;
 useJointFit = 0;
 %% Imaging first spot
-% roiCol = [10,400];
-% roiRow = repmat([500,800],size(roiCol,1),1);
-% roiStep = 2;
-% fittype = '2comp2d';
+roiCol = [300,500];
+roiRow = repmat([500,750],size(roiCol,1),1);
+roiStep = 20;
+fittype = 'tf2d'; %gauss2d
 
 %% Imaging Second spot
-roiRow = [150,550];
-roiCol = repmat([550,850],1,1);
+% roiRow = [150,550];
+% roiCol = repmat([550,850],1,1);
 % roiRow = [100,470;
 %           470,800];
 % roiCol = repmat([550,850],2,1);
-roiStep = 4;
-fittype = 'tf2d';
+% roiStep = 4;
+% fittype = 'tf2d';
 
 %% Fit parameters
-lb = CloudParameters('becwidth',[650e-6,650e-6]);
-ub = CloudParameters('becwidth',[850e-6,850e-6]);
-guess = CloudParameters('becwidth',[750e-6,750e-6]);
+% lb = CloudParameters('becwidth',[650e-6,650e-6]);
+% ub = CloudParameters('becwidth',[850e-6,850e-6]);
+% guess = CloudParameters('becwidth',[750e-6,750e-6]);
 
 %% Imaging parameters
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
@@ -85,10 +85,10 @@ for jj = 1:numImages
     img(jj).raw.copy(raw(jj));
     img(jj).setClouds(size(roiRow,1));
     for nn = 1:numel(img(jj).clouds)
-        img(jj).clouds(nn).fitdata.set('roirow',roiRow(nn,:),'roiCol',roiCol(nn,:),...
-            'roiStep',roiStep,'fittype',fittype,'lb',lb,'ub',ub,'guess',guess);
 %         img(jj).clouds(nn).fitdata.set('roirow',roiRow(nn,:),'roiCol',roiCol(nn,:),...
-%             'roiStep',roiStep,'fittype',fittype,'method','y');
+%             'roiStep',roiStep,'fittype',fittype,'lb',lb,'ub',ub,'guess',guess);
+        img(jj).clouds(nn).fitdata.set('roirow',roiRow(nn,:),'roiCol',roiCol(nn,:),...
+            'roiStep',roiStep,'fittype',fittype,'method','y');
     end
     %
     % Create image
