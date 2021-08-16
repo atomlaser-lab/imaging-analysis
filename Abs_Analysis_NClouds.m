@@ -1,15 +1,15 @@
 function cloud = Abs_Analysis_NClouds(varargin)
 
 atomType = 'Rb87';
-tof = 35e-3;
+tof = 216.5e-3;
 
 col1 = 'b.-';
 col2 = 'r--';
-dispOD = [0,0.15];
+dispOD = [0,0.25];
 plotOpt = 0;
 plotROI = 0;
 useFilt = 1;
-filtWidth = 50e-6;
+filtWidth = 25e-6;
 %% In-trap imaging ROI
 % roiRow = repmat([575,725],3,1);
 % roiRow = [400,660;
@@ -25,17 +25,20 @@ filtWidth = 50e-6;
 % plotROI = {[575,675],[0,175]};
 
 %% Second Spot Imaging ROI 
-roiRow = [200,440;
-          440 680];
+roiRow = [150 490;
+          520 770];
 roiCol = repmat([550,850],2,1);
+
+% roiRow = [0,320;
+%           370 630;650 900];
+% roiCol = repmat([550,850],3,1);
 
 % plotROI = {[200,850],[550,850]};
 
-% roiRow = [10,200;
-%           200,440;
-%           440,690;
-%           690,875];
-% roiCol = repmat([550,850],4,1);
+% roiRow = [10,250;
+%           250,520;
+%           520,800];
+% roiCol = repmat([550,900],3,1);
 
 %% Fit data
 fitdata = AtomCloudFit('roiRow',roiRow(1,:),...
