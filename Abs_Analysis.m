@@ -1,43 +1,28 @@
 function img = Abs_Analysis(varargin)
 
 atomType = 'Rb87';
-tof = 30e-3;
-
-dispOD = [0,1];
-plotOpt = 0;
+tof = 35e-3;
+% tof = varargin{4};
+detuning = 0;
+dispOD = [0,.3];
+plotOpt = 1;
 plotROI = 0;
 useFilt = 0;
 filtWidth = 50e-6;
 useJointFit = 0;
-%% Imaging first spot
-roiCol = [300,500];
-roiRow = repmat([500,750],size(roiCol,1),1);
-roiStep = 20;
-fittype = 'tf2d'; %gauss2d
-
-%% Imaging Second spot
-% roiRow = [150,550];
-% roiCol = repmat([550,850],1,1);
-% roiRow = [100,470;
-%           470,800];
-% roiCol = repmat([550,850],2,1);
-% roiStep = 4;
-% fittype = 'tf2d';
-
-%% Fit parameters
-% lb = CloudParameters('becwidth',[650e-6,650e-6]);
-% ub = CloudParameters('becwidth',[850e-6,850e-6]);
-% guess = CloudParameters('becwidth',[750e-6,750e-6]);
+%% Set imaging region-of-interest (ROI)
+roiRow = [500,850];
+roiCol = [00,400];
+roiStep = 2;
+fittype = 'gauss2d';
 
 %% Imaging parameters
-imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',0,...
+imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',detuning,...
             'pixelsize',6.45e-6,'magnification',0.99,...
-            'freqs',2*pi*[53,53,25],'exposureTime',30e-6,...
+            'freqs',2*pi*[53,53,25],'exposureTime',15e-6,...
             'polarizationcorrection',1.5,'satOD',5);
 
-% directory = '../raw-images';
-directory = '\\TANIT\2021';
-% directory = 'E:\RawImages\2021';
+directory = 'D:\Data';
 
 %% Load raw data
 if nargin == 0 || (nargin == 1 && strcmpi(varargin{1},'last')) || (nargin == 2 && strcmpi(varargin{1},'last') && isnumeric(varargin{2}))
@@ -85,8 +70,6 @@ for jj = 1:numImages
     img(jj).raw.copy(raw(jj));
     img(jj).setClouds(size(roiRow,1));
     for nn = 1:numel(img(jj).clouds)
-%         img(jj).clouds(nn).fitdata.set('roirow',roiRow(nn,:),'roiCol',roiCol(nn,:),...
-%             'roiStep',roiStep,'fittype',fittype,'lb',lb,'ub',ub,'guess',guess);
         img(jj).clouds(nn).fitdata.set('roirow',roiRow(nn,:),'roiCol',roiCol(nn,:),...
             'roiStep',roiStep,'fittype',fittype,'method','y');
     end

@@ -11,8 +11,8 @@ classdef RawImageData < handle
     end
 
     properties(Constant, Hidden=true)
-        DEFAULT_SIZE = [1036,1384];
-        DEFAULT_DIRECTORY = 'E:\RawImages\2019\01Jan\top';
+        DEFAULT_SIZE = [2048,2048];
+        DEFAULT_DIRECTORY = 'D:\Data';
         DEFAULT_NUM_IMAGES = 2;
         DEFAULT_BINARY_TYPE = 'mono16';
         FILE_EXT = '.raw';

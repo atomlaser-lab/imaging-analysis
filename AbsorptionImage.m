@@ -498,7 +498,7 @@ classdef AbsorptionImage < handle
             axis equal;
             axis tight;
             colorbar;
-            colormap(jet);
+            colormap(plasma);
             %
             % Set x and y limits to the stored ROI or the user-specified
             % ROI
@@ -532,7 +532,12 @@ classdef AbsorptionImage < handle
             numberStrTotal = {};
             for nn = 1:numel(self.clouds)
                 c = self.clouds(nn);
-                numberCell = {imgNum(1)+nn/10,c.gaussWidth(1)*1e6,c.gaussWidth(2)*1e6,c.Nsum,c.N,c.becFrac*1e2,c.peakOD,sqrt(prod(c.T))*1e9,c.PSD};
+                if contains(lower(c.fitdata.fittype),{'bec','tf'})
+                    w = c.becWidth;
+                else
+                    w = c.gaussWidth;
+                end
+                numberCell = {imgNum(1)+nn/10,w(1)*1e6,w(2)*1e6,c.Nsum,c.N,c.becFrac*1e2,c.peakOD,sqrt(prod(c.T))*1e9,c.PSD};
                 if nn == 1
                     [labelStr,numberStrTotal{nn}] = self.formatLabel(labelCell,formatCell,numberCell);
                 else
