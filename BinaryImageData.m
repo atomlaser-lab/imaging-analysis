@@ -1,41 +1,16 @@
-classdef RawImageData < handle
-    %RAWIMAGEDATA Defines a class for handling loading raw image data
-    properties
-        directory   %Directory to load data from
-        files       %Files to load
-        images      %Loaded image data
-    end
-    
-    properties(SetAccess = protected)
-        status     %Status information about raw image data
-    end
-
-    properties(Constant, Hidden=true)
-        DEFAULT_SIZE = [2048,2048];
-        DEFAULT_DIRECTORY = 'D:\Data';
-        DEFAULT_NUM_IMAGES = 2;
-        DEFAULT_BINARY_TYPE = 'mono16';
-        FILE_EXT = '.raw';
-    end
-
+classdef BinaryImageData < RawImageData
+    %BINARYIMAGEDATA Defines a class for handling loading raw image data
 
     methods
-        function self = RawImageData(varargin)
-            %RAWIMAGEDATA Creates a RAWIMAGEDATA object
+        function self = BinaryImageData(varargin)
+            %BINARYIMAGEDATA Creates a BINARYIMAGEDATA object
             %
-            %   RAW = RAWIMAGEDATA() creates a blank object RAW
+            %   RAW = BINARYIMAGEDATA() creates a blank object RAW
             %
-            %   RAW = RAWIMAGEDATA(NAME,VALUE,...) creates an object RAW
+            %   RAW = BINARYIMAGEDATA(NAME,VALUE,...) creates an object RAW
             %   and loads data based on the NAME/VALUE pairs given in the
             %   function call
-            self.status = ImageAnalysisErrorHandler;
-            if nargin == 0
-                return
-            elseif nargin > 0 && mod(numel(varargin),2) ~= 0
-                error('Must specify input arguments as name/value pairs');
-            else
-                self.load(varargin{:});
-            end
+            self@RawImageData(varargin{:});
         end
 
         function self = copy(self,obj)
@@ -58,24 +33,19 @@ classdef RawImageData < handle
             %   RAW = RAW.LOAD(NAME,VALUE,...) loads data based on
             %   NAME/VALUE pairs.  Options for NAME are 'directory' (from
             %   which to load data), 'filenames' for the file names to
-            %   load, 'length' for the number of images in each image set,
-            %   'index' for the number of image sets ago to load, 'dims'
-            %   for the dimensions of the image, and 'datatype' for the
-            %   data type to use
+            %   load and'index' for the number of image sets ago to load
             %
-            %   'filenames' should be given as a cell array of file names.
-            %   Alternatively, it can be an array of file structures in the
-            %   format returned by the DIR function and stored as the
-            %   normal property RAWIMAGEDATA.FILES
+            %   'filenames' should be given as a numeric or cell array
+            %   of image numbers to read. Alternatively, it can be an array
+            %   of file structures in the format returned by the DIR
+            %   function and stored as the normal property
+            %   RAWIMAGEDATA.FILES
             %
-            %   'datatype' can be 'mono8', 'mono16', or 'raw8'
+
             if mod(numel(varargin),2) == 0
                 self.directory = self.DEFAULT_DIRECTORY;
                 filenames = 'last';
-                len = self.DEFAULT_NUM_IMAGES;
                 idx = 1;
-                dims = self.DEFAULT_SIZE;
-                dataType = self.DEFAULT_BINARY_TYPE;
                 rotation = 0;
                 for nn = 1:2:numel(varargin)
                     cmd = lower(varargin{nn});
@@ -84,14 +54,8 @@ classdef RawImageData < handle
                             self.directory = varargin{nn+1};
                         case {'filenames','files'}
                             filenames = varargin{nn+1};
-                        case {'length','len'}
-                            len = varargin{nn+1};
                         case {'index','idx'}
                             idx = varargin{nn+1};
-                        case 'dims'
-                            dims = varargin{nn+1};
-                        case 'datatype'
-                            dataType = varargin{nn+1};
                         case 'rotation'
                             rotation = varargin{nn+1};
                         otherwise
@@ -100,82 +64,47 @@ classdef RawImageData < handle
                 end
                 
                 if ~iscell(filenames) && strcmpi(filenames,'last')
-                    [self.files,self.status] = RawImageData.getLastFilenames(self.directory,len,idx);
-                elseif iscell(filenames) || isstring(filenames)
-                    self.files = RawImageData.getFileInfo(self.directory,filenames);
+                    [self.files,self.status] = BinaryImageData.getLastFilenames(self.directory,idx);
+                elseif iscell(filenames) || isstring(filenames) || isnumeric(filenames)
+                    self.files = BinaryImageData.getFileInfo(self.directory,filenames);
                 elseif isstruct(filenames)
                     self.files = filenames;
                 end
-                self.readImages(dataType,dims,rotation);
+                self.readImages(rotation);
             end
         end
 
-        function self = readImages(self,dataType,dims,rotation)
+        function self = readImages(self,rotation)
             %READIMAGES reads images from file
             %
-            %   RAW = RAW.READIMAGES() reads images based on values stored
-            %   in RAW.FILES using a default data type of 'mono16' and
-            %   assuming the image is the same size as DEFAULT_SIZE.
-            %
-            %   RAW = RAW.READIMAGES(DATATYPE) uses the data type given by
-            %   DATATYPE
-            %
-            %   RAW = RAW.READIMAGES(__,DIMS) uses the image dimensions
-            %   given by DIMS
+            %   RAW = RAW.READIMAGES() reads images based on files stored
+            %   in RAW.FILES
             %
             %   RAW = RAW.READIMAGES(__,ROTATION) rotates the image
             %   dimensions by ROTATION, which is either 0, -90, 90, or 180
             %
             if nargin < 2
-                dataType = self.DEFAULT_BINARY_TYPE;
-            end
-            if nargin < 3
-                dims = self.DEFAULT_SIZE;
-            end
-            if nargin < 4
                 rotation = 0;
             end
+            binaryType = 'uint16';
             %
-            % Change binary data type and duplication level (dupl). 'raw8'
-            % has 3 colour channels but they are all the same value for
-            % each pixel
+            % Read and parse images
             %
-            switch lower(dataType)
-                case 'mono8'
-                    binaryType = 'uint8';
-                    dupl = 1;
-                case 'mono16'
-                    binaryType = 'uint16';
-                    dupl = 1;
-                case 'raw8'
-                    binaryType = 'uint8';
-                    dupl = 3;
-                otherwise
-                    error('Unsupported data type');
-            end
+            fid = fopen(fullfile(self.directory,self.files.name),'r');          %Open file
+            tmp = uint16(fread(fid,self.files.bytes/2,binaryType));             %Read file
+            fclose(fid);                                                        %Close file
+            self.images = BinaryImageData.parseBinaryImageData(tmp);            %Parse data
             %
-            % Pre-allocate arrays
+            % Apply rotations
             %
-            if rotation == 90 || rotation == -90
-                self.images = zeros([flip(dims),numel(self.files)]);
-            else
-                self.images = zeros([dims,numel(self.files)]);
-            end
-            for nn = 1:numel(self.files)
-                fid = fopen(fullfile(self.directory,self.files(nn).name),'r');          %Open file
-                tmp = fread(fid,dupl*prod(dims),binaryType);                            %Read file
-                fclose(fid);                                                            %Close file
-                if rotation == 0
-                    self.images(:,:,nn) = double(reshape(tmp(1:dupl:end),dims));        %Reshape the data to be the appropriate size .' is a transpose and will flip
-                elseif rotation == 90
-                    self.images(:,:,nn) = double(reshape(tmp(1:dupl:end),dims)).';
-                elseif rotation == 180
-                    self.images(:,:,nn) = flipud(double(reshape(tmp(1:dupl:end),dims)));
-                elseif rotation == -90
-                    self.images(:,:,nn) = flipud(double(reshape(tmp(1:dupl:end),dims)).');
-                else
-                    error('Only rotations supported at 0, 90, 180, and -90');
-                end
+            if rotation == 90
+                self.images = pagetranspose(self.images);
+            elseif rotation == 180
+                self.images = flipud(self.images);
+            elseif rotation == -90
+                self.images = flipud(pagetranspose(self.images));
+            elseif rotation ~= 0
+                error('Only rotations supported at 0, 90, 180, and -90');
             end
             %
             % Check for saturation of the camera
@@ -206,7 +135,7 @@ classdef RawImageData < handle
             %   with the image files in RAW
             %
             for nn = 1:numel(self.files)
-                tmp = regexpi(self.files(nn).name,'[0-9]+(?=\.raw)','match');
+                tmp = regexpi(self.files(nn).name,'[0-9]+(?=\.bin)','match');
                 imgNum(nn) = str2double(tmp{1});
             end
         end
@@ -249,12 +178,11 @@ classdef RawImageData < handle
             end
         end
         
-        function [f,msg] = getLastFilenames(directory,len,idx)
+        function [files,msg] = getLastFilenames(directory,idx)
             %GETLASTFILENAMES Gets the last filenames from the directory
             %
-            %   F = GETLASTFILENAMES(DIRECTORY,LEN,IDX) looks at directory
-            %   DIRECTORY and grabs LEN files starting IDX ago.  So if IDX
-            %   = 1 then it grabs files from END - (LEN - 1) : END.
+            %   F = GETLASTFILENAMES(DIRECTORY,IDX) looks at directory
+            %   DIRECTORY and grabs all files starting IDX ago.
             %
             %   If IDX is not specified, it assumes that IDX = 1.
             %
@@ -262,31 +190,17 @@ classdef RawImageData < handle
             %   message MSG if something goes wrong while loading a file
             
             %
-            % Get all file names, sort by date
+            % Get the last image file written
             %
-            files = dir(fullfile(directory,['*' RawImageData.FILE_EXT])); %#ok<*PROP>
-            [~,k] = sortrows(datevec([files.datenum]));
-            files(:) = files(k');
-            %
-            % Get LEN file names starting at END - (IDX*LEN - 1)
-            %
-            if nargin <= 2
-                f = files(end-(len-1):end);
-            else
-                f = files(end-(idx*len-1) + (0:(len-1)));
+            fid = fopen(fullfile(directory,'last-image.txt'),'r');
+            last_image = str2double(fgetl(fid));
+            fclose(fid);
+            mm = 1;
+            for nn = last_image:-1:(last_image - idx + 1)
+                files(mm,1) = dir(fullfile(directory,sprintf('bec%d.bin',nn)));
+                mm = mm + 1;
             end
-            
-            %
-            % This checks that the files were taken together by comparing
-            % the times at which they were taken
-            %
-            if any(abs(diff([f.datenum]))*3600*24 > 3)
-                str = sprintf('Set of images may not have been taken together. Time difference of %.3f s',max(abs(diff([f.datenum]))*3600*24));
-                warning(str); %#ok<SPWRN>
-                msg = ImageAnalysisErrorHandler(ImageAnalysisErrorHandler.STATUS_WARNING,str);
-            else
-                msg = ImageAnalysisErrorHandler(ImageAnalysisErrorHandler.STATUS_OK);
-            end
+            msg = ImageAnalysisErrorHandler;
         end
 
         function f = getFileInfo(directory,filenames)
@@ -298,10 +212,15 @@ classdef RawImageData < handle
             for nn = 1:numel(filenames)
                 if iscell(filenames)
                     fname = filenames{nn};
+                    if isnumeric(fname)
+                        fname = sprintf('bec%d.bin',fname(nn));
+                    end
                 elseif isstring(filenames)
                     fname = filenames(nn);
+                elseif isnumeric(filenames)
+                    fname = sprintf('bec%d.bin',filenames(nn));
                 end
-                files(nn) = dir(fullfile(directory,fname)); %#ok<*AGROW>
+                files(nn,1) = dir(fullfile(directory,fname)); %#ok<*AGROW>
             end
             [~,k] = sortrows(datevec([files.datenum]));
             f = files(k);
@@ -309,10 +228,10 @@ classdef RawImageData < handle
         
         function raw = loadImageSets(varargin)
             %LOADIMAGESETS Loads (possibly) multiple images and creates
-            %RAWIMAGEDATA objects for each image set
+            %BINARYIMAGEDATA objects for each image set
             %
             %   RAW = LOADIMAGESETS() Loads the last image set using default
-            %   values in RAWIMAGEDATA
+            %   values in BINARYIMAGEDATA
             %
             %   RAW = LOADIMAGESETS('last',IDX) loads the last image sets
             %   given by IDX, where IDX is a vector of positive integers
@@ -322,8 +241,7 @@ classdef RawImageData < handle
             %
             %   RAW = LOADIMAGESETS(NAME,VALUE,...) Loads image sets given
             %   by NAME/VALUE pairs.  Valid NAME parameters are
-            %   'filenames', 'directory', 'index', 'length', 'dims',
-            %   'datatype', and 'rotation'
+            %   'filenames', 'directory', 'index', and 'rotation'
             %
             %   'filenames' should be a cell array of file names
             %   corresponding to one image set.  If more than one image
@@ -341,14 +259,12 @@ classdef RawImageData < handle
             %   sets, each set of length len, the array should be N*len
             %   long
             %
-            %   'length' is the length of each image set.
+            %   'filenames' can also just be a numeric array of image
+            %   numbers
             %
             %   'directory' is the directory from which to load images
             %
             %   'index' is the same as IDX above
-            %
-            %   'dims' is the image size, and 'datatype' is the data type
-            %   of the images, either 'mono8', 'mono16', or 'raw8'
             %
             %   'rotation' is the angle to rotate the image, either 0, 90,
             %   -90, or 180
@@ -361,10 +277,7 @@ classdef RawImageData < handle
             %
             filenames = 'last';
             index = 1;
-            len = RawImageData.DEFAULT_NUM_IMAGES;
-            directory = RawImageData.DEFAULT_DIRECTORY;
-            dims = RawImageData.DEFAULT_SIZE;
-            dataType = RawImageData.DEFAULT_BINARY_TYPE;
+            directory = BinaryImageData.DEFAULT_DIRECTORY;
             rotation = 0;
             %
             % Parse inputs
@@ -378,12 +291,6 @@ classdef RawImageData < handle
                         directory = v;
                     case {'index','idx'}
                         index = v;
-                    case {'length','len'}
-                        len = v;
-                    case 'dims'
-                        dims = v;
-                    case 'datatype'
-                        dataType = v;
                     case 'rotation'
                         rotation = v;
                 end
@@ -394,9 +301,9 @@ classdef RawImageData < handle
                 % Load the last images according to the index
                 %
                 numImages = numel(index);
-                raw(numImages,1) = RawImageData;
+                raw(numImages,1) = BinaryImageData;
                 for mm = 1:numImages
-                    raw(mm).load('filenames','last','directory',directory,'index',index(mm),'len',len,'dims',dims,'datatype',dataType,'rotation',rotation);
+                    raw(mm).load('filenames','last','directory',directory,'index',index(mm),'rotation',rotation);
                 end
             elseif iscell(filenames)
                 %
@@ -410,9 +317,9 @@ classdef RawImageData < handle
                     filenames{1} = filenames;
                 end
                 numImages = numel(filenames);
-                raw(numImages,1) = RawImageData;
+                raw(numImages,1) = BinaryImageData;
                 for mm = 1:numImages
-                    raw(mm).load('filenames',filenames{mm},'directory',directory,'len',len,'dims',dims,'datatype',dataType,'rotation',rotation);
+                    raw(mm).load('filenames',filenames{mm},'directory',directory,'rotation',rotation);
                 end
             elseif isstruct(filenames)
                 %
@@ -424,10 +331,10 @@ classdef RawImageData < handle
                     error('File structures must have the ''name'' field');
                 end
                 numImages = floor(numel(filenames)/len);
-                raw(numImages,1) = RawImageData;
+                raw(numImages,1) = BinaryImageData;
                 for mm = 1:numImages
                     fileidx = ((mm-1)*len+1):(mm*len);
-                    raw(mm).load('filenames',filenames(fileidx),'directory',directory,'len',len,'dims',dims,'datatype',dataType,'rotation',rotation);
+                    raw(mm).load('filenames',filenames(fileidx),'directory',directory,'rotation',rotation);
                 end
             elseif isstring(filenames)
                 %
@@ -436,10 +343,20 @@ classdef RawImageData < handle
                 % [set1_file1,set1_file2,set2_file1,set2_file2,...]
                 %
                 numImages = floor(numel(filenames)/len);
-                raw(numImages,1) = RawImageData;
+                raw(numImages,1) = BinaryImageData;
                 for mm = 1:numImages
                     fileidx = ((mm-1)*len+1):(mm*len);
-                    raw(mm).load('filenames',filenames(fileidx),'directory',directory,'len',len,'dims',dims,'datatype',dataType,'rotation',rotation);
+                    raw(mm).load('filenames',filenames(fileidx),'directory',directory,'rotation',rotation);
+                end
+            elseif isnumeric(filenames)
+                %
+                % If filenames are just numeric values, assume they
+                % correspond to image numbers
+                %
+                numImages = numel(filenames);
+                raw(numImages,1) = BinaryImageData;
+                for mm = 1:numImages
+                    raw(mm).load('filenames',filenames(mm),'directory',directory,'rotation',rotation);
                 end
             else
                 %
@@ -447,6 +364,31 @@ classdef RawImageData < handle
                 %
                 error('Unsupported filename input type!');
             end
+        end
+
+        function imgs = parseBinaryImageData(data)
+            %PARSEBINARYIMAGEDATA Parses a 1D array of binary data into a
+            %set of 2D images.  The first 2-bytes of the image data must be
+            %the image format version number, and this function should be modified
+            %to handle updates to the image format.
+            %
+            %   IMGS = PARSEBINARYIMAGEDATA(DATA) parses 1D array DATA into
+            %   3D array IMGS
+            %
+            img_version = data(1);
+            img_width = double(data(2));
+            img_height = double(data(3));
+            num_images = data(4);
+            data = data(5:end);
+            imgs = zeros(img_height,img_width,num_images);
+            start_idx = 1;
+            final_idx = start_idx + img_height*img_width - 1;
+            for nn = 1:num_images
+                imgs(:,:,nn) = reshape(double(data(start_idx:final_idx)),size(imgs,[1,2]));
+                start_idx = final_idx + 1;
+                final_idx = start_idx + img_height*img_width - 1;
+            end
+
         end
     end
 

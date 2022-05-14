@@ -148,27 +148,20 @@ classdef AtomCloud < handle
             %
             % Check that the fit is good
             %
-            if f.is1D()
-                if p.gaussAmp(1) < 1.5*std(f.residuals.x)
-                    p.gaussAmp(1) = 0;
-                end
-                if p.gaussAmp(2) < 1.5*std(f.residuals.y)
-                    p.gaussAmp(2) = 0;
-                end
-            else
-                if p.gaussAmp < 1.5*std(f.residuals(:))
-                    p.gaussAmp = 0;
+            if ~strcmpi(f.fittype,'sum')
+                if f.is1D()
+                    if p.gaussAmp(1) < 1.5*std(f.residuals.x)
+                        p.gaussAmp(1) = 0;
+                    end
+                    if p.gaussAmp(2) < 1.5*std(f.residuals.y)
+                        p.gaussAmp(2) = 0;
+                    end
+                else
+                    if p.gaussAmp < 1.5*std(f.residuals(:))
+                        p.gaussAmp = 0;
+                    end
                 end
             end
-            %
-            % Copy over parameters that don't need extra processing
-            %
-            self.gaussWidth = p.gaussWidth;
-            self.pos = p.pos;
-            self.becWidth = p.becWidth;
-            self.cloudAngle = p.cloudAngle;
-            self.T = c.calcTemperature(self.gaussWidth);
-            self.peakOD = max(max(f.image));
             %
             % Calculate number of atoms
             %
@@ -179,7 +172,22 @@ classdef AtomCloud < handle
                 %
                 self.N = self.sum();
                 self.Nsum = self.N;
+                self.becFrac = NaN;
+                self.PSD = NaN;
+                self.gaussWidth = nan(1,2);
+                self.becWidth = nan(1,2);
+                self.pos = nan(1,2);
+                self.T = nan(1,2);
+                self.peakOD = max(max(f.image));
             else
+                %
+                % Copy over parameters that don't need extra processing
+                %
+                self.gaussWidth = p.gaussWidth;
+                self.pos = p.pos;
+                self.becWidth = p.becWidth;
+                self.cloudAngle = p.cloudAngle;
+                self.peakOD = max(max(f.image));
                 if f.is1D()
                     %
                     % If the fit method is a 1D type, calculate the number
@@ -227,6 +235,7 @@ classdef AtomCloud < handle
                 %
                 % Calculate the BEC fraction and the phase-space density
                 %
+                self.T = c.calcTemperature(self.gaussWidth);
                 self.becFrac = Nbec./(Nth+Nbec);
                 self.PSD = self.calcPSD;
             end
