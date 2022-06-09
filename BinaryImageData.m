@@ -26,6 +26,13 @@ classdef BinaryImageData < RawImageData
             end
             self.status.copy(obj.status);
         end
+
+        function r = is_multi_camera(self)
+            %IS_MULTI_CAMERA Returns true if image files contains images
+            %from multiple cameras
+
+            r = iscell(self.images);
+        end
         
         function self = load(self,varargin)
             %LOAD loads raw image data
@@ -94,37 +101,51 @@ classdef BinaryImageData < RawImageData
             tmp = uint16(fread(fid,self.files.bytes/2,binaryType));             %Read file
             fclose(fid);                                                        %Close file
             self.images = BinaryImageData.parseBinaryImageData(tmp);            %Parse data
-            %
-            % Apply rotations
-            %
-            if rotation == 90
-                self.images = pagetranspose(self.images);
-            elseif rotation == 180
-                self.images = flipud(self.images);
-            elseif rotation == -90
-                self.images = flipud(pagetranspose(self.images));
-            elseif rotation ~= 0
-                error('Only rotations supported at 0, 90, 180, and -90');
+            if ~self.is_multi_camera
+                num_sets = 1;
+                self.images = {self.images};
+            else
+                num_sets = numel(self.images);
             end
-            %
-            % Check for saturation of the camera
-            %
-            switch binaryType
-                case 'uint8'
-                    max_value = 240;
-
-                case 'uint16'
-                    max_value = 65000;
-            end
-            for nn = 1:size(self.images,3)
-                tmp = self.images(:,:,nn);
-                num_saturated_pixels = sum(tmp(:) >= max_value);
-                if num_saturated_pixels > 0.1*numel(tmp)
-                    self.status.status = ImageAnalysisErrorHandler.STATUS_WARNING;
-                    self.status.message = 'Image is saturated';
-                    warning(self.status.message);
-                    break
+            for mm = 1:num_sets
+                %
+                % Apply rotations
+                %
+                if rotation == 90
+                    self.images{mm} = pagetranspose(self.images{mm});
+                elseif rotation == 180
+                    self.images{mm} = flipud(self.images{mm});
+                elseif rotation == -90
+                    self.images{mm} = flipud(pagetranspose(self.images{mm}));
+                elseif rotation ~= 0
+                    error('Only rotations supported at 0, 90, 180, and -90');
                 end
+                %
+                % Check for saturation of the camera
+                %
+                switch binaryType
+                    case 'uint8'
+                        max_value = 240;
+    
+                    case 'uint16'
+                        max_value = 65000;
+                end
+                for nn = 1:size(self.images{mm},3)
+                    tmp = self.images{mm}(:,:,nn);
+                    num_saturated_pixels = sum(tmp(:) >= max_value);
+                    if num_saturated_pixels > 0.1*numel(tmp)
+                        self.status.status = ImageAnalysisErrorHandler.STATUS_WARNING;
+                        self.status.message = 'Image is saturated';
+                        warning(self.status.message);
+                        break
+                    end
+                end
+            end
+            %
+            % Fix image structure for single camera image sets
+            %
+            if num_sets == 1
+                self.images = self.images{1};
             end
         end
 
@@ -195,8 +216,9 @@ classdef BinaryImageData < RawImageData
             fid = fopen(fullfile(directory,'last-image.txt'),'r');
             last_image = str2double(fgetl(fid));
             fclose(fid);
+            image_numbers = last_image - idx + 1;
             mm = 1;
-            for nn = last_image:-1:(last_image - idx + 1)
+            for nn = image_numbers
                 files(mm,1) = dir(fullfile(directory,sprintf('bec%d.bin',nn)));
                 mm = mm + 1;
             end
@@ -313,9 +335,6 @@ classdef BinaryImageData < RawImageData
                 % (so it should be len long). If one image set, it can be
                 % just the one cell array of length len
                 %
-                if numel(filenames) == len
-                    filenames{1} = filenames;
-                end
                 numImages = numel(filenames);
                 raw(numImages,1) = BinaryImageData;
                 for mm = 1:numImages
@@ -376,19 +395,44 @@ classdef BinaryImageData < RawImageData
             %   3D array IMGS
             %
             img_version = data(1);
-            img_width = double(data(2));
-            img_height = double(data(3));
-            num_images = data(4);
-            data = data(5:end);
-            imgs = zeros(img_height,img_width,num_images);
-            start_idx = 1;
-            final_idx = start_idx + img_height*img_width - 1;
-            for nn = 1:num_images
-                imgs(:,:,nn) = reshape(double(data(start_idx:final_idx)),size(imgs,[1,2]));
-                start_idx = final_idx + 1;
-                final_idx = start_idx + img_height*img_width - 1;
-            end
+            switch img_version
+                case 0
+                    img_width = double(data(2));
+                    img_height = double(data(3));
+                    num_images = data(4);
+                    data = data(5:end);
+                    imgs = zeros(img_width,img_height,num_images);
+                    start_idx = 1;
+                    final_idx = start_idx + img_height*img_width - 1;
+                    for nn = 1:num_images
+                        imgs(:,:,nn) = reshape(double(data(start_idx:final_idx)),img_width,img_height);
+                        start_idx = final_idx + 1;
+                        final_idx = start_idx + img_height*img_width - 1;
+                    end
 
+                case 1
+                    img_width(1) = double(data(2));
+                    img_height(1) = double(data(3));
+                    num_images(1) = data(4);
+
+                    img_width(2) = double(data(5));
+                    img_height(2) = double(data(6));
+                    num_images(2) = data(7);
+
+                    start_idx = 1;
+                    final_idx = start_idx + img_height(1)*img_width(1) - 1;
+                    for mm = 1:numel(img_width)
+                        imgs{mm} = zeros(img_width(mm),img_height(mm),num_images(mm));
+                        for nn = 1:num_images(mm)
+                            imgs{mm}(:,:,nn) = reshape(double(data(start_idx:final_idx)),img_width(mm),img_height(mm));
+                            start_idx = final_idx + 1;
+                            final_idx = start_idx + img_height(mm)*img_width(mm) - 1;
+                        end
+                    end
+
+                otherwise
+                    error('Unknown image version %d!',img_version);
+            end
         end
     end
 

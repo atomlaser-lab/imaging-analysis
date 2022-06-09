@@ -3,40 +3,39 @@ function img = Abs_Analysis(varargin)
 atomType = 'Rb87';
 tof = 20e-3;
 detuning = 0;
-dispOD = [0,1];
+dispOD = [0,3];
 plotOpt = 1;
-plotROI = 0; 
+plotROI = 1; 
 useFilt = 0;
 filtWidth = 75e-6;
 useJointFit = 0;
 %% Set imaging region-of-interest (ROI)
-roiRow = [10,2100]; %580,800
-roiCol = [10,2100]; %850,1400
-% roiStep = 5;
-% roiRow = [700,1100;
+roiRow = [100,400]; %580,800
+roiCol = [1000,1300]; %850,1400
+% roiRow = [1500,1700];
 %           1100,2000];
-% roiCol = repmat([600,1600],size(roiRow,1),1);
-% roiRow = [700,2000];
-% roiCol = repmat([300,1700],size(roiRow,1),1);
+% roiCol = repmat([1000,1200],size(roiRow,1),1);
+% roiRow = [1000,2000];
+% roiCol = repmat([400,1800],size(roiRow,1),1);
 % plotROI = {[min(roiRow(:)),max(roiRow(:))],[min(roiCol(:)),max(roiCol(:))]};
-roiStep = [1,1]*5;
-fittype = 'gauss2d';
-%mag = 0.758
+roiStep = [1,1]*1;
+fittype = '2comp1d';
+% mag = 0.758
 
 offset_region.row = [100,300];
 offset_region.col = [100,300];
 %% Imaging parameters
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',detuning,...
-            'pixelsize',5.5e-6,'freqs',2*pi*[53,53,25],...
-            'exposureTime',75e-6,'polarizationcorrection',1,'satOD',5);
+            'pixelsize',5.5e-6,'freqs',2*pi*[127,24,129],...
+            'exposureTime',100e-6,'polarizationcorrection',15/8,'satOD',11);
 
-imaging_system = 'low res';
+imaging_system = 'high res';
 if strcmpi(imaging_system,'low res')
-    imgconsts.magnification = 0.6506;
+    imgconsts.magnification = 0.6058;
     imgconsts.photonsPerCount = 0.2644;
-    image_rotation = 0;
+    image_rotation = 90;
 elseif strcmpi(imaging_system,'high res')
-    imgconsts.magnification = 3.4036;
+    imgconsts.magnification = 3.3851;
     imgconsts.photonsPerCount = 0.4747;
     image_rotation = -90;
 end
@@ -70,13 +69,16 @@ end
 %
 % This loads the raw image sets
 %
-raw = BinaryImageData.loadImageSets('directory',directory,'rotation',image_rotation,'length',3,args{:});
+raw = BinaryImageData.loadImageSets('directory',directory,'rotation',image_rotation,args{:});
 
 numImages = numel(raw);
 plotOpt = plotOpt || numImages == 1;    %This always enables plotting if only one image is analyzed
 
 img = AbsorptionImage.empty;
 for nn = 1:numImages
+    if raw(nn).is_multi_camera
+        raw(nn).images = raw(nn).images{2};
+    end
     img(nn,1) = AbsorptionImage(BinaryImageData);
 end
 
@@ -91,7 +93,7 @@ for jj = 1:numImages
     img(jj).offset_region = offset_region;
     for nn = 1:numel(img(jj).clouds)
         img(jj).clouds(nn).fitdata.set('roirow',roiRow(nn,:),'roiCol',roiCol(nn,:),...
-            'roiStep',roiStep,'fittype',fittype,'method','y');
+            'roiStep',roiStep,'fittype',fittype,'method','x');
     end
     %
     % Create image
@@ -100,6 +102,8 @@ for jj = 1:numImages
         img(jj).makeImage;
     elseif size(img(jj).raw.images,3) == 3
         img(jj).makeImage([1,2,3]);
+    elseif size(img(jj).raw.images,3) > 3
+        img(jj).makeImage(size(img(jj).raw.images,3) - 1 - 3 + (1:3));
     else
         error('Not sure what to do here');
     end
@@ -125,7 +129,7 @@ for jj = 1:numImages
             img(jj).plotAllData(dispOD,plotROI);
             axs = get(gcf,'children');
 %             axs(end).Title.String = [axs(end).Title.String,', ',sprintf('N1 = %.2e N2 = %.2e, R = %.2f',img(jj).clouds(1).N,img(jj).clouds(2).N,img(jj).clouds(2).N/img(jj).clouds(1).N)];
-            axs(end).Title.String = [axs(end).Title.String,', ',sprintf('N1 = %.2e',img(jj).clouds(1).N)];
+            axs(end).Title.String = [axs(end).Title.String,', ',sprintf('N = %.2e',img(jj).clouds(1).N)];
         else
             %
             % Plot only the absorption data in a grid when there is more than one image
