@@ -422,6 +422,9 @@ classdef BinaryImageData < RawImageData
                     start_idx = 1;
                     final_idx = start_idx + img_height(1)*img_width(1) - 1;
                     for mm = 1:numel(img_width)
+                        if mm > 1
+                            final_idx = start_idx + img_height(mm)*img_width(mm) - 1;
+                        end
                         imgs{mm} = zeros(img_width(mm),img_height(mm),num_images(mm));
                         for nn = 1:num_images(mm)
                             imgs{mm}(:,:,nn) = reshape(double(data(start_idx:final_idx)),img_width(mm),img_height(mm));
