@@ -215,7 +215,7 @@ classdef AtomCloud < handle
                     %
                     Nbec = 2*pi/5*p.becAmp*prod(p.becWidth);
                     Nth = p.gaussAmp*(2*pi*prod(p.gaussWidth));
-                    self.peakOD = p.becAmp +p.gaussAmp;
+                    self.peakOD = p.becAmp + p.gaussAmp;
                 end
                 %
                 % This converts from the raw number to an actual number
@@ -239,6 +239,7 @@ classdef AtomCloud < handle
                 self.becFrac = Nbec./(Nth+Nbec);
                 self.PSD = self.calcPSD;
             end
+            self.peakOD = self.peakOD/c.polarizationCorrection;
         end
         
         function PSD = calcPSD(self,N,T)

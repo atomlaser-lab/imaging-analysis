@@ -127,7 +127,7 @@ classdef AbsorptionImage < handle
             % Set NaNs and Infs to zero
             %
             tmp = real(-log(imgWithAtoms./imgWithoutAtoms));
-            tmp(isnan(tmp) | isinf(tmp)) = 0;
+            tmp(isnan(tmp) | isinf(tmp)) = NaN;
             self.ODraw = tmp;
 %             self.peakOD = max(max(self.ODraw));
             %
@@ -509,6 +509,7 @@ classdef AbsorptionImage < handle
             % Create the image make it look nice
             %
             imagesc(self.ODraw,dispOD);
+%             imagesc(self.ODcorr,dispOD);
             axis equal;
             axis tight;
             colorbar;

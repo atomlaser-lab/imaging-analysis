@@ -349,11 +349,10 @@ classdef BinaryImageData < RawImageData
                 if ~isfield(filenames(1),'name')
                     error('File structures must have the ''name'' field');
                 end
-                numImages = floor(numel(filenames)/len);
+                numImages = numel(filenames);
                 raw(numImages,1) = BinaryImageData;
                 for mm = 1:numImages
-                    fileidx = ((mm-1)*len+1):(mm*len);
-                    raw(mm).load('filenames',filenames(fileidx),'directory',directory,'rotation',rotation);
+                    raw(mm).load('filenames',filenames(mm),'directory',directory,'rotation',rotation);
                 end
             elseif isstring(filenames)
                 %
