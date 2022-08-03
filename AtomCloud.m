@@ -148,7 +148,7 @@ classdef AtomCloud < handle
             %
             % Check that the fit is good
             %
-            if ~strcmpi(f.fittype,'sum')
+            if ~any(strcmpi(f.fittype,{'sum','none'}))
                 if f.is1D()
                     if p.gaussAmp(1) < 1.5*std(f.residuals.x)
                         p.gaussAmp(1) = 0;
@@ -165,7 +165,7 @@ classdef AtomCloud < handle
             %
             % Calculate number of atoms
             %
-            if strcmpi(f.fittype,'sum')
+            if any(strcmpi(f.fittype,{'sum','none'}))
                 %
                 % If fittype is 'sum', just use the summed value for the
                 % number of atoms

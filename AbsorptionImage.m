@@ -127,7 +127,7 @@ classdef AbsorptionImage < handle
             % Set NaNs and Infs to zero
             %
             tmp = real(-log(imgWithAtoms./imgWithoutAtoms));
-            tmp(isnan(tmp) | isinf(tmp)) = NaN;
+            tmp(isnan(tmp) | isinf(tmp)) = log(imgWithoutAtoms(isnan(tmp) | isinf(tmp)));
             self.ODraw = tmp;
 %             self.peakOD = max(max(self.ODraw));
             %
