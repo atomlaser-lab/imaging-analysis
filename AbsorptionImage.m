@@ -21,6 +21,8 @@ classdef AbsorptionImage < handle
         ODraw           %raw absorption image: -log(imgWithAtoms/imgWithoutAtoms)
         ODcorr          %corrected absorption image
         imgidxs         %Indicies in raw image data corresponding to data used for this instance
+        offset_region   %Region of image to use for removing offsets on ODraw
+        offset          %The offset that was removed from ODraw
     end
     
     properties(SetAccess = protected)
@@ -58,6 +60,9 @@ classdef AbsorptionImage < handle
             else
                 self.constants = varargin{2};
             end
+            self.offset_region.row = [];
+            self.offset_region.col = [];
+            self.offset = 0;
         end
         
         function self = setClouds(self,v)
@@ -122,9 +127,18 @@ classdef AbsorptionImage < handle
             % Set NaNs and Infs to zero
             %
             tmp = real(-log(imgWithAtoms./imgWithoutAtoms));
-            tmp(isnan(tmp) | isinf(tmp)) = 0;
+            tmp(isnan(tmp) | isinf(tmp)) = log(imgWithoutAtoms(isnan(tmp) | isinf(tmp)));
             self.ODraw = tmp;
 %             self.peakOD = max(max(self.ODraw));
+            %
+            % Remove offsets from image
+            %
+            if ~isempty(self.offset_region.row) && ~isempty(self.offset_region.col)
+                row = self.offset_region.row(1):self.offset_region.row(end);
+                col = self.offset_region.col(1):self.offset_region.col(end);
+                self.offset = mean(mean(self.ODraw(row,col)));
+            end
+            self.ODraw = self.ODraw - self.offset;
             %
             % Correct for finite saturation OD
             %
@@ -495,6 +509,7 @@ classdef AbsorptionImage < handle
             % Create the image make it look nice
             %
             imagesc(self.ODraw,dispOD);
+%             imagesc(self.ODcorr,dispOD);
             axis equal;
             axis tight;
             colorbar;
