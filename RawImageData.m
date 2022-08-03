@@ -11,8 +11,8 @@ classdef RawImageData < handle
     end
 
     properties(Constant, Hidden=true)
-        DEFAULT_SIZE = [2048,2048];
-        DEFAULT_DIRECTORY = 'D:\Data';
+        DEFAULT_SIZE = [1036,1384];
+        DEFAULT_DIRECTORY = 'E:\RawImages\2019\01Jan\top';
         DEFAULT_NUM_IMAGES = 2;
         DEFAULT_BINARY_TYPE = 'mono16';
         FILE_EXT = '.raw';
@@ -166,13 +166,13 @@ classdef RawImageData < handle
                 tmp = fread(fid,dupl*prod(dims),binaryType);                            %Read file
                 fclose(fid);                                                            %Close file
                 if rotation == 0
-                    self.images(:,:,nn) = double(reshape(tmp(1:dupl:end),dims));        %Reshape the data to be the appropriate size .' is a transpose and will flip
+                    self.images(:,:,nn) = double(reshape(tmp(1:dupl:end),flip(dims))).';        %Reshape the data to be the appropriate size .' is a transpose and will flip
                 elseif rotation == 90
-                    self.images(:,:,nn) = double(reshape(tmp(1:dupl:end),dims)).';
+                    self.images(:,:,nn) = double(reshape(tmp(1:dupl:end),flip(dims))).';
                 elseif rotation == 180
-                    self.images(:,:,nn) = flipud(double(reshape(tmp(1:dupl:end),dims)));
+                    self.images(:,:,nn) = flipud(double(reshape(tmp(1:dupl:end),flip(dims))).');
                 elseif rotation == -90
-                    self.images(:,:,nn) = flipud(double(reshape(tmp(1:dupl:end),dims)).');
+                    self.images(:,:,nn) = flipud(double(reshape(tmp(1:dupl:end),flip(dims))).');
                 else
                     error('Only rotations supported at 0, 90, 180, and -90');
                 end
