@@ -8,9 +8,4 @@ trap.ext_force.Fx = @(~,~,~) 0;
 trap.ext_force.Fy = @(~,~,~) 0;
 trap.ext_force.Fz = @(~,~,~) const.mRb*const.g;
 
-[ftmp,V] = trap.freq(0,0,0,1e-6);
-f = zeros(1,3);
-for nn = 1:numel(ftmp)
-    [~,idx] = max(abs(V(:,nn)).^2);
-    f(idx) = ftmp(nn);
-end
+f = trap.freq(0,0,0,1e-6);
