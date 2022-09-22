@@ -127,7 +127,7 @@ classdef AbsorptionImage < handle
             % Set NaNs and Infs to zero
             %
             tmp = real(-log(imgWithAtoms./imgWithoutAtoms));
-            tmp(isnan(tmp) | isinf(tmp)) = log(imgWithoutAtoms(isnan(tmp) | isinf(tmp)));
+            tmp(isnan(tmp) | isinf(tmp)) = real(log(imgWithoutAtoms(isnan(tmp) | isinf(tmp))));
             self.ODraw = tmp;
 %             self.peakOD = max(max(self.ODraw));
             %
@@ -138,7 +138,9 @@ classdef AbsorptionImage < handle
                 col = self.offset_region.col(1):self.offset_region.col(end);
                 self.offset = mean(mean(self.ODraw(row,col)));
             end
-            self.ODraw = self.ODraw - self.offset;
+            if ~isinf(self.offset) && ~isnan(self.offset)
+                self.ODraw = self.ODraw - self.offset;
+            end
             %
             % Correct for finite saturation OD
             %
@@ -152,6 +154,7 @@ classdef AbsorptionImage < handle
             % the corrected optical depth map
             %
             self.ODcorr = c.polarizationCorrection*ODmod + (1 - exp(-ODmod)).*imgWithoutAtoms./Nsat;
+            self.ODcorr(isnan(self.ODcorr)) = 0;
             %
             % Create x and y vectors based on pixel size and magnification
             %

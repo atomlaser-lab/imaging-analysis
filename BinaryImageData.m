@@ -418,7 +418,7 @@ classdef BinaryImageData < RawImageData
                     img_height(2) = double(data(6));
                     num_images(2) = data(7);
 
-                    start_idx = 1;
+                    start_idx = 8;
                     final_idx = start_idx + img_height(1)*img_width(1) - 1;
                     for mm = 1:numel(img_width)
                         if mm > 1
