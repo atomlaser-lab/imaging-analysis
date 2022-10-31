@@ -432,6 +432,34 @@ classdef BinaryImageData < RawImageData
                         end
                     end
 
+                case 2
+                    img_width(1) = double(data(2));
+                    img_height(1) = double(data(3));
+                    num_images(1) = data(4);
+                    binning(1) = double(data(5));
+
+                    img_width(2) = double(data(6));
+                    img_height(2) = double(data(7));
+                    num_images(2) = data(8);
+                    binning(2) = double(data(9));
+
+                    img_height = img_height./binning;
+                    img_width = img_width./binning;
+
+                    start_idx = 10;
+                    final_idx = start_idx + img_height(1)*img_width(1) - 1;
+                    for mm = 1:numel(img_width)
+                        if mm > 1
+                            final_idx = start_idx + img_height(mm)*img_width(mm) - 1;
+                        end
+                        imgs{mm} = zeros(img_width(mm),img_height(mm),num_images(mm));
+                        for nn = 1:num_images(mm)
+                            imgs{mm}(:,:,nn) = reshape(double(data(start_idx:final_idx)),img_width(mm),img_height(mm));
+                            start_idx = final_idx + 1;
+                            final_idx = start_idx + img_height(mm)*img_width(mm) - 1;
+                        end
+                    end
+
                 otherwise
                     error('Unknown image version %d!',img_version);
             end

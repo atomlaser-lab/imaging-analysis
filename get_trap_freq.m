@@ -1,4 +1,4 @@
-function f = get_trap_freq(P1,P2)
+function [f,D,trap] = get_trap_freq(P1,P2)
 %
 % Use to calculate optical trap frequencies
 %
@@ -9,3 +9,4 @@ trap.ext_force.Fy = @(~,~,~) 0;
 trap.ext_force.Fz = @(~,~,~) const.mRb*const.g;
 
 f = trap.freq(0,0,0,1e-6);
+D = trap.depth(0,0,0,'z')/const.kb*1e6;
