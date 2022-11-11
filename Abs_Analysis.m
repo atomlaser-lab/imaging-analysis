@@ -4,33 +4,32 @@ atomType = 'Rb87';
 imaging_system = 'high res';
 tof = 20e-3;
 detuning = 0;
-dispOD = [0,3];
+dispOD = [0,1];
 plotOpt = 1;
 plotROI = 0;
 useFilt = 0;
 filtWidth = 5e-6;
 useJointFit = 0;
 %% Set imaging region-of-interest (ROI)
-roiRow = 1600 + 400*[-1,1]; %580,800
-roiCol = repmat(1000 + 400*[-1,1],size(roiRow,1),1); %850,1400
+roiRow = 1650 + 200*[-1,1]; %580,800
+roiCol = repmat(1070 + 200*[-1,1],size(roiRow,1),1); %850,1400
 % roiRow = [1,128];
 % roiCol = [1,128];
-% roiRow = [500 + 150*[-1,1];
-%           815 + 150*[-1,1];
-%           1140 + 150*[-1,1];
-%           1470 + 150*[-1,1];
-%           1777 + 150*[-1,1];];
+%roiRow = [1480 + 125*[-1,1];
+%          1750 + 125*[-1,1]];
 % roiRow = roiRow([2,3,4],:);
-% roiCol = repmat(1000 + 250*[-1,1],size(roiRow,1),1);
-roiStep = 1*[1,1];
-% fittype = 'gauss1d';
-fittype = '2comp1d';
+%roiCol = repmat(1100 + 125*[-1,1],size(roiRow,1),1);
+
+
+roiRow = [400,1600];
+roiCol = [400,1600];
+roiStep = 3*[1,1];
+% fittype = 'gauss2d'; 
+fittype = 'twocomp1d';
 
 % %for a full frame image
-% roiRow = [1,1900];
-% roiCol = [1,2100];
-% roiRow = [200,2100];
-% roiCol = [10,2100];
+%  roiRow = [1,2048];
+%  roiCol = [1,2048];
 
 offset_region.row = [100,300];
 offset_region.col = [100,300];
@@ -47,11 +46,11 @@ if strcmpi(imaging_system,'low res')
     imgconsts.photonsPerCount = 0.2644;
     image_rotation = 90;
 elseif strcmpi(imaging_system,'high res')
-    imgconsts.magnification = 3.56;
+    imgconsts.magnification = 3.5;
     imgconsts.photonsPerCount = 0.4747;
     image_rotation = -90;
 elseif strcmpi(imaging_system,'vertical')
-    imgconsts.magnification = 4.3243;
+    imgconsts.magnification = 10.176;
     imgconsts.photonsPerCount = 0.4747;
     image_rotation = -90;
 elseif strcmpi(imaging_system,'MOT')

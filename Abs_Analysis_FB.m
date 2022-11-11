@@ -7,26 +7,26 @@ dispOD = [0,3];
 plotOpt = 1;
 plotROI = 0;
 useFilt = 0;
-filtWidth = 10e-6;
+filtWidth = 5e-6;
 bin_size = 1;
 %% Set imaging region-of-interest (ROI)
 % roiRow = [1,2048];
 % roiCol = [1,2048];
 roiRow = 1700 + 200*[-1,1]; %580,800
 roiCol = 1120 + 200*[-1,1]; %850,1400
-roiStep = 1*[1,1];
-% fittype = 'gauss1d';
-fittype = '2comp1d';
+roiStep = 2*[1,1];
+% fittype = 'gauss2d';
+fittype = '2comp2d';
 
-% offset_region.row = [100,300];
-% offset_region.col = [100,300];
-offset_region.row = [];
-offset_region.col = [];
+offset_region.row = [1600,1800];
+offset_region.col = [200,400];
+% offset_region.row = [];
+% offset_region.col = [];
 %% Imaging parameters
 
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',detuning,...
-    'pixelsize',5.5e-6*bin_size,'exposureTime',30e-6,'polarizationcorrection',1,'satOD',11);
-imgconsts.freqs = 2*pi*get_trap_freq(2,2);
+    'pixelsize',5.5e-6*bin_size,'exposureTime',40e-6,'polarizationcorrection',1,'satOD',11);
+imgconsts.freqs = 2*pi*get_trap_freq(0.8,1.34);
 imgconsts.magnification = 3.5;
 imgconsts.photonsPerCount = 0.4747;
 image_rotation = -90;
@@ -61,7 +61,7 @@ end
 %
 raw = BinaryImageData.loadImageSets('directory',directory,'rotation',image_rotation,args{:});
 try
-    fb = FeedbackData.loadFeedbackData('directory',directory,args{:});
+    fb = FeedbackData.loadFeedbackData('directory',directory,'files',raw.getImageNumbers);
 catch err
     fb = [];
 end
@@ -107,6 +107,7 @@ for jj = 1:numImages
     %
     % Fit clouds
     %
+%     img(jj).clouds.fitdata.ex = 6;
     img(jj).fit;
 
     %% Plotting
@@ -150,7 +151,7 @@ for jj = 1:numImages
 end
 
 
-if (raw.is_multi_camera && size(raw.images{1},3) > 1) || (numImages == 1 && size(raw.images,3) >= 5)
+if (numImages == 1 && raw.is_multi_camera && size(raw.images{1},3) > 1) || (numImages == 1 && size(raw.images,3) >= 5)
 %     sum_idx_y = 500:580;
 %     sum_idx_x = 925:1025;
 %     row = 400:550;

@@ -50,6 +50,7 @@ classdef AtomCloudFit < handle
             self.lb = CloudParameters([]);
             self.ub = CloudParameters([]);
             self.guess = CloudParameters([]);
+            self.ex = [];
             if nargin > 0
                 self.set(varargin{:});
             end
@@ -285,6 +286,8 @@ classdef AtomCloudFit < handle
             end
             if nargin < 3
                 ex = [];
+            else
+                self.ex = ex;
             end
             %
             % Perform fit according to fit type
@@ -296,13 +299,13 @@ classdef AtomCloudFit < handle
                 case {'none','sum'}
                     self.params = CloudParameters();
                 case {'gauss1d','twocomp1d','tf1d'}
-                    [px,self.xfit,self.bg.x] = self.fit1D(self.fittype,self.x,self.xdata,self.lb,self.ub,self.guess,ex);
-                    [py,self.yfit,self.bg.y] = self.fit1D(self.fittype,self.y,self.ydata,self.lb,self.ub,self.guess,ex);
+                    [px,self.xfit,self.bg.x] = self.fit1D(self.fittype,self.x,self.xdata,self.lb,self.ub,self.guess,self.ex);
+                    [py,self.yfit,self.bg.y] = self.fit1D(self.fittype,self.y,self.ydata,self.lb,self.ub,self.guess,self.ex);
                     self.residuals.x = self.xdata(:) - self.xfit(:);
                     self.residuals.y = self.ydata(:) - self.yfit(:);
                     self.params = CloudParameters(px,py);
                 case {'gauss2d','gauss2dangle','twocomp2d','tf2d'}
-                    [self.params,f,self.bg] = self.fit2D(self.fittype,self.x,self.y,self.image,self.lb,self.ub,self.guess,ex);
+                    [self.params,f,self.bg] = self.fit2D(self.fittype,self.x,self.y,self.image,self.lb,self.ub,self.guess,self.ex);
                     self.xfit = sum(f,1);self.yfit = sum(f,2);
                     self.residuals = self.image - f;
                 otherwise
@@ -738,7 +741,7 @@ classdef AtomCloudFit < handle
                 'pos',[minx,miny],'gausswidth',5*abs([diff(x(1:2)),diff(y(1:2))]),...
                 'becwidth',5*abs([diff(x(1:2)),diff(y(1:2))]),'lin',-0.1./[range(x),range(y)],...
                 'cloudangle',-pi/6);
-            ub = CloudParameters('offset',0.1,'gaussamp',10,'becamp',10,...
+            ub = CloudParameters('offset',0.1,'gaussamp',10,'becamp',50,...
                 'pos',[maxx,maxy],'gausswidth',[range(x),range(y)],...
                 'becwidth',[range(x),range(y)],'lin',+10./[range(x),range(y)],...
                 'cloudangle',pi/6);
@@ -892,28 +895,28 @@ classdef AtomCloudFit < handle
             %
             switch lower(fittype)
                 case {'gauss2d','gauss'}
-                    g = AtomCloudFit.guessGauss2DParams(x,y,zex);
+                    g = AtomCloudFit.guessGauss2DParams(x,y,z);
                     func = @(c,x) AtomCloudFit.gauss2D(c,x);
                     order = {'gaussamp','posx','gausswidthx',...
                         'posy','gausswidthy','offset','linx','liny'};
                 case {'gauss2dangle','gaussangle'}
-                    g = AtomCloudFit.guessGauss2DParams(x,y,zex);
+                    g = AtomCloudFit.guessGauss2DParams(x,y,z);
                     func = @(c,x) AtomCloudFit.gauss2D(c,x);
                     order = {'gaussamp','posx','gausswidthx',...
                         'posy','gausswidthy','cloudangle',...
                         'offset','linx','liny'};
                 case {'bec2d','tf2d','bec','tf'}
-                    g = AtomCloudFit.guessTF2DParams(x,y,zex);
+                    g = AtomCloudFit.guessTF2DParams(x,y,z);
                     func = @(c,x) AtomCloudFit.bec2D(c,x);
                     order = {'becamp','posx','becwidthx',...
                         'posy','becwidthy','offset','linx','liny'};
                 case {'2comp2d','2comp','twocomp2d','twocomp'}
-                    g = AtomCloudFit.guessGauss2DParams(x,y,zex);
-                    gtf = AtomCloudFit.guessTF2DParams(x,y,zex);
+                    g = AtomCloudFit.guessGauss2DParams(x,y,z);
+                    gtf = AtomCloudFit.guessTF2DParams(x,y,z);
                     
                     g.compare(gtf);
                     g.gaussAmp = g.gaussAmp/2;
-                    g.becAmp = g.becAmp/2;
+                    g.becAmp = g.becAmp;
                     func = @(c,x) AtomCloudFit.twoComp2D(c,x);
                     order = {'gaussamp','posx','gausswidthx',...
                         'posy','gausswidthy','becamp','becwidthx',...
@@ -950,9 +953,16 @@ classdef AtomCloudFit < handle
             %
             % Extract parameters
             %
+            Position = cat(3,X,Y);
             p = CloudParameters(0).setFromArray(order,params);
             f = func(params,Position);
             bg = AtomCloudFit.bg2D(params(end-2:end),Position,p.pos);
+        end
+
+        function [X,Y,z] = exclusion(ex,X,Y,z)
+            X = X(z <= ex);
+            Y = Y(z <= ex);
+            z = z(z <= ex);
         end
 
     end

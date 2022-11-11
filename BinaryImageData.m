@@ -155,8 +155,8 @@ classdef BinaryImageData < RawImageData
             %   NUMS = RAW.GETIMAGENUMBERS() returns the numbers associated
             %   with the image files in RAW
             %
-            for nn = 1:numel(self.files)
-                tmp = regexpi(self.files(nn).name,'[0-9]+(?=\.bin)','match');
+            for nn = 1:numel(self)
+                tmp = regexpi(self(nn).files.name,'[0-9]+(?=\.bin)','match');
                 imgNum(nn) = str2double(tmp{1});
             end
         end

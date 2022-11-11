@@ -138,7 +138,7 @@ classdef AtomCloud < handle
             c = self.constants;
             f = self.fitdata;
             if dofit
-                f.fit(fittype,ex);
+                f.fit(fittype);
             end
             %
             % Compute effective pixel area, extract fit parameters
