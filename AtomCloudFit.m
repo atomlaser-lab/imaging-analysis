@@ -126,6 +126,8 @@ classdef AtomCloudFit < handle
                     self.fittype = 'tf2d';
                 case {'twocomp2d','2comp2d'}
                     self.fittype = 'twocomp2d';
+                case {'2comp2dv2'}
+                    self.fittype = '2comp2dv2';
                 otherwise
                     error('Fit type ''%s'' not supported',v);
             end
@@ -203,7 +205,7 @@ classdef AtomCloudFit < handle
             %   R = C.IS1D() returns true if the fit type is a 1D type and
             %   false if it is not
             %
-            v = {'gauss2d','gauss2dangle','twocomp2d','tf2d','none'};
+            v = {'gauss2d','gauss2dangle','twocomp2d','tf2d','none','2comp2dv2'};
             r = true;
             for nn = 1:numel(v)
                 if strcmpi(v{nn},self.fittype)
@@ -304,7 +306,7 @@ classdef AtomCloudFit < handle
                     self.residuals.x = self.xdata(:) - self.xfit(:);
                     self.residuals.y = self.ydata(:) - self.yfit(:);
                     self.params = CloudParameters(px,py);
-                case {'gauss2d','gauss2dangle','twocomp2d','tf2d'}
+                case {'gauss2d','gauss2dangle','twocomp2d','tf2d','2comp2dv2'}
                     [self.params,f,self.bg] = self.fit2D(self.fittype,self.x,self.y,self.image,self.lb,self.ub,self.guess,self.ex);
                     self.xfit = sum(f,1);self.yfit = sum(f,2);
                     self.residuals = self.image - f;
@@ -570,14 +572,14 @@ classdef AtomCloudFit < handle
         function F = twoComp2D(c,Z)
             %TWOCOMP2D defines a 2D two-component distribution
             %
-            %   F = TWOCOMP2D(C,Z) where Z is a 3D array where Z(:,:,1) the X
-            %   array and Z(:,:,2) the Y array.  C is s.t. C(1) is the
-            %   BEC amplitude, C(2) is the x offset, C(3) is the x BEC width, C(4)
-            %   is the y offset, C(5) is the y BEC width, C(6) is the linear
-            %   term in X, C(7) is the linear term in Y, c(8) is the
-            %   offset, C(9) is the Gaussian amplitude, C(10) is the x
-            %   Gaussian standard deviation, and C(11) is the y Gaussian
-            %   standard deviation
+            %   F = TWOCOMP2D(C,Z) where Z is a 3D array where Z(:,:,1) the
+            %   X array and Z(:,:,2) the Y array.  C is s.t. C(1) is the
+            %   Gaussian amplitude, C(2) is the x offset, C(3) is the x
+            %   Gaussian width, C(4) is the y offset, C(5) is the y
+            %   Gaussian width, C(6) is the BEC amplitude, C(7) is the x
+            %   BEC width, C(8) is the y BEC width, C(9) is the offset,
+            %   C(10) is the linear X background term, and C(11) is the
+            %   linear Y background term
             %
             Ag = c(1);
             x0 = c(2);
@@ -590,6 +592,39 @@ classdef AtomCloudFit < handle
             x = (Z(:,:,1)-x0);
             y = (Z(:,:,2)-y0);
             s2 = (x/xwb).^2 + (y/ywb).^2;
+            F = Ag*exp(-x.^2./(2*xwg.^2)-y.^2./(2*ywg.^2))...
+                + Ab*((1 - s2).*(s2 <= 1)).^1.5...
+                + AtomCloudFit.bg2D(c(end-2:end),Z,[x0,y0]);
+        end
+        
+        function F = twoComp2Dv2(c,Z)
+            %TWOCOMP2Dv2 defines a 2D two-component distribution with
+            %different centers for the Gaussian and TF distributions
+            %
+            %   F = TWOCOMP2D(C,Z) where Z is a 3D array where Z(:,:,1) the
+            %   X array and Z(:,:,2) the Y array.  C is s.t. C(1) is the
+            %   Gaussian amplitude, C(2) is the x offset, C(3) is the x
+            %   Gaussian width, C(4) is the y offset, C(5) is the y
+            %   Gaussian width, C(6) is the BEC amplitude, C(7) is the x
+            %   BEC width, C(8) is the y BEC width, C(9) is the X BEC position, C(10) is the Y BEC position, C(11) is the offset,
+            %   C(12) is the linear X background term, and C(13) is the
+            %   linear Y background term
+            %
+            Ag = c(1);
+            x0 = c(2);
+            xwg = c(3);
+            y0 = c(4);
+            ywg = c(5);
+            Ab = c(6);
+            xwb = c(7);
+            ywb = c(8);
+            x0b = c(9);
+            y0b = c(10);
+            x = Z(:,:,1) - x0;
+            y = Z(:,:,2) - y0;
+            xb = Z(:,:,1) - x0b;
+            yb = Z(:,:,2) - y0b;
+            s2 = (xb/xwb).^2 + (yb/ywb).^2;
             F = Ag*exp(-x.^2./(2*xwg.^2)-y.^2./(2*ywg.^2))...
                 + Ab*((1 - s2).*(s2 <= 1)).^1.5...
                 + AtomCloudFit.bg2D(c(end-2:end),Z,[x0,y0]);
@@ -645,7 +680,7 @@ classdef AtomCloudFit < handle
             end
 
             guess = CloudParameters([]);
-            guess = guess.set('offset',Az,'pos',Cz,'gaussamp',Bz,...
+            guess = guess.set('offset',Az,'pos',Cz,'pos_bec',Cz,'gaussamp',Bz,...
                 'gausswidth',Dz,'lin',0);
         end
         
@@ -661,6 +696,7 @@ classdef AtomCloudFit < handle
             g.gaussAmp = max(z(:));
             g.offset = min(z(:));
             g.pos = [gx.pos,gy.pos];
+            g.pos_bec = g.pos;
             g.gaussWidth = [gx.gaussWidth,gy.gaussWidth];
             g.lin = [0,0];
         end
@@ -677,6 +713,7 @@ classdef AtomCloudFit < handle
             g.becAmp = max(z(:));
             g.offset = min(z(:));
             g.pos = [gx.pos,gy.pos];
+            g.pos_bec = g.pos;
             g.becWidth = [gx.becWidth,gy.becWidth];
             g.lin = [0,0];
         end
@@ -725,6 +762,8 @@ classdef AtomCloudFit < handle
             ub = CloudParameters('offset',100,'gaussamp',1e3,'becamp',1e3,...
                 'pos',max(x),'gausswidth',range(x),...
                 'becwidth',range(x),'lin',+10/range(x));
+            lb.pos_bec = lb.pos;
+            ub.pos_bec = ub.pos;
         end
         
         function [lb,ub] = guessBounds2D(x,y,z)
@@ -745,6 +784,8 @@ classdef AtomCloudFit < handle
                 'pos',[maxx,maxy],'gausswidth',[range(x),range(y)],...
                 'becwidth',[range(x),range(y)],'lin',+10./[range(x),range(y)],...
                 'cloudangle',pi/6);
+            lb.pos_bec = lb.pos;
+            ub.pos_bec = ub.pos;
         end
         
         function params = attemptFit(f,guess,x,y,lb,ub,options)
@@ -921,6 +962,18 @@ classdef AtomCloudFit < handle
                     order = {'gaussamp','posx','gausswidthx',...
                         'posy','gausswidthy','becamp','becwidthx',...
                         'becwidthy','offset','linx','liny'};
+                case {'2comp2dv2'}
+                    g = AtomCloudFit.guessGauss2DParams(x,y,z);
+                    gtf = AtomCloudFit.guessTF2DParams(x,y,z);
+                    gtf.pos_bec = gtf.pos;
+                    
+                    g.compare(gtf);
+                    g.gaussAmp = g.gaussAmp/2;
+                    g.becAmp = g.becAmp;
+                    func = @(c,x) AtomCloudFit.twoComp2D(c,x);
+                    order = {'gaussamp','posx','gausswidthx',...
+                        'posy','gausswidthy','becamp','becwidthx',...
+                        'becwidthy','pos_becx','pos_becy','offset','linx','liny'};
             end
             %
             % Get default bounds and guesses

@@ -7,6 +7,7 @@ classdef AtomCloud < handle
         N               %Number of atoms extracted using a fit method in FITDATA
         Nsum            %Number of atoms extracted by summing of the region of interest.
         pos             %Position of the cloud as [x0,y0]
+        pos_bec         %Position of the BEC distribution as [x0,y0]
         gaussWidth      %Width of the Gaussian fits as [xwidth,ywidth]
         T               %Temperature of the cloud as [Tx,Ty]
         peakOD          %Peak optical depth
@@ -177,6 +178,7 @@ classdef AtomCloud < handle
                 self.gaussWidth = nan(1,2);
                 self.becWidth = nan(1,2);
                 self.pos = nan(1,2);
+                self.pos_bec = nan(1,2);
                 self.T = nan(1,2);
                 self.peakOD = max(max(f.image));
             else
@@ -185,6 +187,7 @@ classdef AtomCloud < handle
                 %
                 self.gaussWidth = p.gaussWidth;
                 self.pos = p.pos;
+                self.pos_bec = p.pos_bec;
                 self.becWidth = p.becWidth;
                 self.cloudAngle = p.cloudAngle;
                 self.peakOD = max(max(f.image));

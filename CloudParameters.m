@@ -8,6 +8,7 @@ classdef CloudParameters < handle
         offset      %Offset(s) on data
         lin         %Linear background variations in X and Y
         pos         %X and Y position offsets
+        pos_bec     %X and Y position offsets for the BEC component
         gaussWidth  %Gaussian widths
         becWidth    %Thomas-Fermi widths
         cloudAngle  %Rotation of Gaussian cloud when using 2D fits
@@ -50,6 +51,7 @@ classdef CloudParameters < handle
                     v = varargin{1};
                     self.offset = v;
                     self.pos = [v,v];
+                    self.pos_bec = [v,v];
                     self.gaussAmp = v;
                     self.gaussWidth = [v,v];
                     self.becAmp = v;
@@ -67,6 +69,7 @@ classdef CloudParameters < handle
                 p1 = varargin{1};p2 = varargin{2};
                 self.offset = [p1.offset(1),p2.offset(1)];
                 self.pos = [p1.pos,p2.pos];
+                self.pos_bec = [p1.pos_bec,p2.pos_bec];
                 self.gaussAmp = [p1.gaussAmp(1),p2.gaussAmp(1)];
                 self.gaussWidth = [p1.gaussWidth(1),p2.gaussWidth(1)];
                 self.becAmp = [p1.becAmp(1),p2.becAmp(1)];
@@ -97,6 +100,8 @@ classdef CloudParameters < handle
                             self.offset = v;
                         case 'pos'
                             self.pos = v;
+                        case 'pos_bec'
+                            self.pos_bec = v;
                         case 'gaussamp'
                             self.gaussAmp = v;
                         case 'gausswidth'
@@ -156,6 +161,12 @@ classdef CloudParameters < handle
                         v = [v,self.pos(1)];
                     case 'posy'
                         v = [v,self.pos(2)];
+                    case 'pos_bec'
+                        v = [v,self.pos_bec(:)'];
+                    case 'pos_becx'
+                        v = [v,self.pos_bec(1)];
+                    case 'pos_becy'
+                        v = [v,self.pos_bec(2)];   
                     case 'gaussamp'
                         v = [v,self.gaussAmp(:)'];
                     case 'gausswidth'
@@ -201,6 +212,12 @@ classdef CloudParameters < handle
                         self.pos(1) = a(nn);
                     case 'posy'
                         self.pos(2) = a(nn);
+                    case 'pos_bec'
+                        self.pos_bec = a(nn);
+                    case 'pos_becx'
+                        self.pos_bec(1) = a(nn);
+                    case 'pos_becy'
+                        self.pos_bec(2) = a(nn);
                     case 'gaussamp'
                         self.gaussAmp = a(nn);
                     case 'gausswidth'
@@ -281,6 +298,12 @@ classdef CloudParameters < handle
                         cp.pos(1) = a(nn);
                     case 'posy'
                         cp.pos(2) = a(nn);
+                    case 'pos_bec'
+                        cp.pos_bec = a(nn);
+                    case 'pos_becx'
+                        cp.pos_bec(1) = a(nn);
+                    case 'pos_becy'
+                        cp.pos_bec(2) = a(nn);
                     case 'gaussamp'
                         cp.gaussAmp = a(nn);
                     case 'gausswidth'
