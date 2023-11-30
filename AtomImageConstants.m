@@ -107,7 +107,7 @@ classdef AtomImageConstants < handle
             %   object C given atom type ATOMTYPE (only 'Rb87' is
             %   supported)
             self.pixelSize = 6.45e-6;
-            self.magnification = 0.97;
+            self.magnification = 1;
             self.tof = 35e-3;
             self.exposureTime = 30e-6;
             self.photonsPerCount = 17e3/(2^16*0.174);
@@ -152,6 +152,15 @@ classdef AtomImageConstants < handle
             %   NSAT = C.SATN() returns the saturation number of counts
             %   NSAT
             Nsat = self.Isat.*(self.pixelSize/self.magnification)^2*self.exposureTime/(const.h*const.c/self.wavelength)/self.photonsPerCount*(1+4*(self.detuning/self.gamma).^2);
+        end
+
+        function px_size = effective_pixel_size(self)
+            %EFFECTIVE_PIXEL_SIZE Calculates the effective pixel size in
+            %the object plane
+            %
+            %   PX_SIZE = C.EFFECTIVE_PIXEL_SIZE returns the effective
+            %   pixel size
+            px_size = self.pixelSize/self.magnification;
         end
         
         function s = struct(self)

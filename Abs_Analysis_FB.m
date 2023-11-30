@@ -1,33 +1,47 @@
 function [img,nd_image,fb] = Abs_Analysis_FB(varargin)
-
+pause(1);
 atomType = 'Rb87';
-tof = 20e-3;
-detuning = 0;
-dispOD = [0,3];
+imaging_system = 'low res';
+% imaging_system = 'low res';
+tof = evalin('base', 'opt.tof'); % get the 'tof' variable from the base workspace
+detuning = evalin('base', 'opt.detuning'); % get the 'tof' variable from the base workspace
+% detuning = 8;
+dispOD = [0,1.5]; % [0.0, 1.5];
 plotOpt = 1;
 plotROI = 0;
 useFilt = 0;
-filtWidth = 5e-6;
-bin_size = 1;
+filtWidth = 50e-6;
 %% Set imaging region-of-interest (ROI)
-% roiRow = [1,2048];
-% roiCol = [1,2048];
-roiRow = 1700 + 200*[-1,1]; %580,800
-roiCol = 1120 + 200*[-1,1]; %850,1400
-roiStep = 2*[1,1];
+roiRow = [1,2048]; % FULL FRAME 
+roiCol = [1,2048]; % FULL FRAME 
+% roiRow =  1600 + 150*[-1,1]; % 150
+% roiCol =  1090 + 150*[-1,1]; % 150
+% roiCol =  880 + 150*[-1,1]; % 150
+roiStep = 1*[1,1];
 % fittype = 'gauss2d';
-fittype = '2comp2d';
+fittype = 'gauss1d';
+% fittype = 'twocomp2d';
 
-offset_region.row = [1600,1800];
-offset_region.col = [200,400];
-% offset_region.row = [];
-% offset_region.col = [];
+% offset_region.row = [1600,1800];
+% offset_region.col = [200,400];
+offset_region.row = [];
+offset_region.col = [];
 %% Imaging parameters
 
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',detuning,...
-    'pixelsize',5.5e-6*bin_size,'exposureTime',40e-6,'polarizationcorrection',1,'satOD',11);
-imgconsts.freqs = 2*pi*get_trap_freq(0.8,1.34);
-imgconsts.magnification = 3.5;
+    'pixelsize',5.5e-6,'exposureTime',40e-6,'polarizationcorrection',1,'satOD',11);
+redpower = evalin('base', 'opt.redpower');
+raycus = evalin('base', 'opt.raycus');
+imgconsts.freqs = 2*pi*get_trap_freq(raycus, redpower); % double power of raykus
+% imgconsts.freqs = 2*pi*get_trap_freq(2*1,2);
+if strcmpi(imaging_system,'high res')
+    imgconsts.magnification = 3.49;% 3.5;
+elseif strcmpi(imaging_system,'low res')
+    imgconsts.magnification = 0.955;
+elseif strcmpi(imaging_system,'vertical')
+    imgconsts.magnification = 5.42;
+    imgconsts.polarizationCorrection = 3/2;    %This is only approximate for sigma and pi polarised light
+end
 imgconsts.photonsPerCount = 0.4747;
 image_rotation = -90;
 directory = 'D:\labview-images';
@@ -66,7 +80,7 @@ catch err
     fb = [];
 end
 numImages = numel(raw);
-plotOpt = plotOpt || numImages == 1;    %This always enables plotting if only one image is analyzed
+% plotOpt = plotOpt || numImages == 1;    %This always enables plotting if only one image is analyzed
 
 img = AbsorptionImage.empty;
 for nn = 1:numImages
@@ -94,7 +108,7 @@ for jj = 1:numImages
     %
     if size(img(jj).raw.images,3) == 2
         img(jj).makeImage;
-    elseif size(img(jj).raw.images,3) == 3
+    elseif size(img(jj).raw.images,3) >= 3
         img(jj).makeImage([1,2,3]);
     elseif size(img(jj).raw.images,3) > 3
         img(jj).makeImage(size(img(jj).raw.images,3) + (-2:0));
@@ -120,7 +134,9 @@ for jj = 1:numImages
             img(jj).plotAllData(dispOD,plotROI);
             axs = get(gcf,'children');
             %             axs(end).Title.String = [axs(end).Title.String,', ',sprintf('N1 = %.2e N2 = %.2e, R = %.2f',img(jj).clouds(1).N,img(jj).clouds(2).N,img(jj).clouds(2).N/img(jj).clouds(1).N)];
-            axs(end).Title.String = [axs(end).Title.String,', ',sprintf('N = %.2e',img(jj).clouds(1).N)];
+            axs(end).Title.String = [axs(end).Title.String,', ',sprintf('N = %.2e,x = %.0f,y = %.0f',img(jj).clouds(1).N,img(jj).clouds(1).pos(1)/(imgconsts.pixelSize/imgconsts.magnification),img(jj).clouds(1).pos(2)/(imgconsts.pixelSize/imgconsts.magnification))];
+            %hold(axs(end),'on');
+            %plot(x corners, y corners,'--');
         else
             %
             % Plot only the absorption data in a grid when there is more than one image
@@ -140,35 +156,46 @@ for jj = 1:numImages
     end
 
     %% Print summaries
-    [labelStr,numStr] = img(jj).labelOneROI;
-    if jj == 1
-        disp(labelStr);
+    if plotOpt
+        [labelStr,numStr] = img(jj).labelOneROI;
+        if jj == 1
+            disp(labelStr);
+        end
+        %     for nn = 1:numel(img(jj).clouds)
+        %         [labelStr,numStr] = img(jj).labelOneROI;
+        disp(numStr);
     end
-    %     for nn = 1:numel(img(jj).clouds)
-    %         [labelStr,numStr] = img(jj).labelOneROI;
-    disp(numStr);
 
 end
 
 
 if (numImages == 1 && raw.is_multi_camera && size(raw.images{1},3) > 1) || (numImages == 1 && size(raw.images,3) >= 5)
+% Old things for debugging 
 %     sum_idx_y = 500:580;
 %     sum_idx_x = 925:1025;
 %     row = 400:550;
 %     col = 950:1150;
 %     raw.images = pagetranspose(flipud(raw.images{1}));
+    
+    %%% Save the image and get rows and columns
     raw.images = raw.images{1};
     row = 1:size(raw.images,1);
     col = 1:size(raw.images,2);
+
+% Old things for debugging: 
 %     max_idx = size(raw.images,3) - 3;
 %     nd_image = raw.images(:,:,3:max_idx)./raw.images(:,:,2) - 1;
 
-    max_idx = size(raw.images,3);
-    nd_image = raw.images(:,:,2:max_idx)./raw.images(:,:,1) - 1;
-%     nd_image = raw.images(:,:,2:max_idx) - raw.images(:,:,1);
-    nd_image(isinf(nd_image) | isnan(nd_image)) = 0;
-    nd_image = -nd_image(row,col,:);
-    nd_image = nd_image - sum(sum(nd_image(1:8,1:8,:),1),2)/64;
+    %%% Obtain the number of images, and calculate signal and remove bad images
+    max_idx = size(raw.images,3);                                           % Count the number of ND images
+    nd_image = raw.images(:,:,2:max_idx)./raw.images(:,:,1) - 1;            % Get the signal
+    nd_image(isinf(nd_image) | isnan(nd_image)) = 0;                        % Remove bad images
+    
+    %%% Flip the images (equiv to rotation)
+    nd_image = -nd_image(row,col,:);                                        % Flip image 
+    nd_image = nd_image - sum(sum(nd_image(1:8,1:8,:),1),2)/128; % /64      % Take away minimum
+    
+    %%% Reindex images (accounts for dark image)
     if raw.images(:,:,1) > 10
         for nn = 1:size(nd_image,3)
             if raw.images(1,1,1 + nn) < 10
@@ -179,56 +206,88 @@ if (numImages == 1 && raw.is_multi_camera && size(raw.images{1},3) > 1) || (numI
     nd_image_orig = nd_image;
     
 
-%     nd_image = const.butterworth2D(nd_image,5);
-%     nd_image = dct_filter(nd_image,15,1);
+    % ~~~ ~~~ ~~~ ~~~ ~~~ 
+    %%% From here to...
+    if(0)
+        %%% Apply a 4th order Butterworth filter to smooth the data:
+        width = 15;                                                             % Width of the butterwork filter
+        order = 4;                                                              % Order of the filter
+        % nd_image = const.butterworth2D(nd_image,width,order);                   % Apply a 4th order BW filter... acts a LP filter
+    
+        %%% Original code by RT:
+%         nd_image = const.butterworth2D(nd_image,15);                         % Apply a 4th order BW filter... acts a LP filter
+    
+        %%% Apply a low-pass filter to remove high freq noise
+        order = 1;                                                              % Sets the filter order for dct filter
+        % nd_image = dct_filter(nd_image,15,order);                               % Apply a discrte cosine transform filter (LP filter)    
+    
+        %%% Calculate the inverse Laplacian:
+        for nn = 1:size(nd_image,3)
+            %%% Calculate the Fourier transform:
+    %         Y = fftshift(fft2(nd_image(:,:,nn)));
+            Y = fft2(nd_image(:,:,nn));                                         % Apply a 2D Fourier transform    
+            Y(1,1) = 0;                                                         % Regularisation parameter sets the origin to zero
+            Y = fftshift(Y);                                                    % Shifts the data due to shift that is built into the Fourier transform
+    
+            %%% Generate the k vector that 
+            kx = 2*pi/(imgconsts.pixelSize/imgconsts.magnification)*linspace(-0.5,0.5,size(nd_image,2));
+            ky = 2*pi/(imgconsts.pixelSize/imgconsts.magnification)*linspace(-0.5,0.5,size(nd_image,1));
+            
+            %%% Make a mesh grid 
+            [KX,KY] = meshgrid(kx,ky);
+            K2 = KX.^2 + KY.^2;
+            
+            %%% Define the order 1 filter:
+            F = 1./K2;
+            F(isinf(F) | isnan(F)) = 1/eps;
+    
+            %%% Generate the image in real space:
+            nd_image(:,:,nn) = real(ifft2(ifftshift(F.*Y)));                    % Apply my filter, and then shift back and then inverse transform:
+        end
+    
+        %%% Apply a non-linear filter:
+%         nd_image = nd_image.^6;                                                 % Apply a 6th order filter to supress low freq noise
+        % nd_image = nd_image.^2;
+    
+        %%% Only include the ROI:
+        % sum_idx_y = 1:size(nd_image,1);
+        % sum_idx_x = 1:size(nd_image,2);
+        row = 1:size(nd_image,1);                                               % Calculates the number of rows 
+        col = 1:size(nd_image,2);                                               % Calculates the number of columns
+        % sum_idx_y = 30:40;
+        % sum_idx_x = 30:90;
+        nd_image = nd_image(row,col);
+    end 
+    %%% ... here was disabled
 
-%     for nn = 1:size(nd_image,3)
-% %         Y = fftshift(fft2(nd_image(:,:,nn)));
-%         Y = fft2(nd_image(:,:,nn));
-%         Y(1,1) = 0;
-%         Y = fftshift(Y);
-%         kx = 2*pi/(imgconsts.pixelSize/imgconsts.magnification)*linspace(-0.5,0.5,size(nd_image,2));
-%         ky = 2*pi/(imgconsts.pixelSize/imgconsts.magnification)*linspace(-0.5,0.5,size(nd_image,1));
-%         [KX,KY] = meshgrid(kx,ky);
-%         K2 = KX.^2 + KY.^2;
-%         F = 1./K2;
-%         F(isinf(F) | isnan(F)) = 1/eps;
-%         nd_image(:,:,nn) = real(ifft2(ifftshift(F.*Y)));
-%     end
+    if plotOpt
+        figure(3);clf;
+        axes('position',[0.3,0.3,0.6,0.65]);
+        imagesc(nd_image(:,:,1),[-Inf,Inf]);                                % Plots the first bright SGI:
+        axis equal;
+        axis tight; 
+        colorbar;
+        title(sprintf('%.5f',mean(max(max(nd_image(:,:,1),[],1),[],2))));
+        
+        %%% Plot the Y distribution
+        axes('position',[0.075,0.35,0.15,0.6]);
+        plot(sum(nd_image(:,:,1),2),size(nd_image(:,:,1),1):-1:1,'.-');
+        grid on;
+        xlim([-Inf,Inf]);
+    %     xlim([0,2.5]);
+        
+        %%% Plot the X distribution
+        axes('position',[0.1,0.075,0.8,0.15]);
+        plot(1:size(nd_image(:,:,1),2),sum(nd_image(:,:,1),1),'.-');
+        grid on;
+        ylim([-Inf,Inf]);
+    %     ylim([0,2.5]);
+    end
 
-%     nd_image = nd_image.^2;
-
-%     sum_idx_y = 1:size(nd_image,1);
-%     sum_idx_x = 1:size(nd_image,2);
-%     row = 1:size(nd_image,1);
-%     col = 1:size(nd_image,2);
-%     sum_idx_y = 30:40;
-%     sum_idx_x = 30:90;
-%     nd_image = nd_image(row,col);
-
-    figure(3);clf;
-    axes('position',[0.3,0.3,0.6,0.65]);
-    imagesc(nd_image(:,:,1),[-Inf,Inf]);axis equal;axis tight;
-    colorbar;
-    title(sprintf('%.5f',mean(max(max(nd_image(:,:,1),[],1),[],2))));
-    %
-    % Plot the Y distribution
-    %
-    axes('position',[0.075,0.35,0.15,0.6]);
-    plot(sum(nd_image(:,:,1),2),size(nd_image(:,:,1),1):-1:1,'.-');
-    grid on;
-    xlim([-Inf,Inf]);
-%     xlim([0,2.5]);
-    %
-    % Plot the X distribution
-    %
-    axes('position',[0.1,0.075,0.8,0.15]);
-    plot(1:size(nd_image(:,:,1),2),sum(nd_image(:,:,1),1),'.-');
-    grid on;
-    ylim([-Inf,Inf]);
-%     ylim([0,2.5]);
-
-    nd_image = nd_image_orig;
+    %%% Return the unfiltered image:
+    if(1)
+        nd_image = nd_image_orig;
+    end 
 else
     nd_image = [];
 end

@@ -151,15 +151,18 @@ classdef AtomCloud < handle
             %
             if ~any(strcmpi(f.fittype,{'sum','none'}))
                 if f.is1D()
-                    if p.gaussAmp(1) < 1.5*std(f.residuals.x)
+                    if (p.gaussAmp(1) + p.becAmp(1)) < 1.5*std(f.residuals.x)
                         p.gaussAmp(1) = 0;
+                        p.becAmp(1) = 0;
                     end
-                    if p.gaussAmp(2) < 1.5*std(f.residuals.y)
+                    if (p.gaussAmp(2) + p.becAmp(2)) < 1.5*std(f.residuals.y)
                         p.gaussAmp(2) = 0;
+                        p.becAmp(2) = 0;
                     end
                 else
-                    if p.gaussAmp < 1.5*std(f.residuals(:))
+                    if (p.gaussAmp + p.becAmp) < 1.5*std(f.residuals(:))
                         p.gaussAmp = 0;
+                        p.becAmp = 0;
                     end
                 end
             end
