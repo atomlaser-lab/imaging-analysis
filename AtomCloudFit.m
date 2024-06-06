@@ -42,9 +42,9 @@ classdef AtomCloudFit < handle
             %   C = ATOMCLOUDFIT(NAME,VALUE,...) creates an ATOMCLOUDFIT
             %   object using parameters specified as NAME/VALUE pairs.  See
             %   SETUP() for more information
-            self.imgSize = RawImageData.DEFAULT_SIZE;
-            self.roiRow = [1,RawImageData.DEFAULT_SIZE(1)];
-            self.roiCol = [1,RawImageData.DEFAULT_SIZE(2)];
+            self.imgSize = BinaryImageData.DEFAULT_SIZE;
+            self.roiRow = [1,BinaryImageData.DEFAULT_SIZE(1)];
+            self.roiCol = [1,BinaryImageData.DEFAULT_SIZE(2)];
             self.roiStep = 1;
             self.fittype = 'none';
             self.lb = CloudParameters([]);

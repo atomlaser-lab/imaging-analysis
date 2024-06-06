@@ -11,6 +11,7 @@ classdef CloudParameters < handle
         gaussWidth  %Gaussian widths
         becWidth    %Thomas-Fermi widths
         cloudAngle  %Rotation of Gaussian cloud when using 2D fits
+        other       %Other parameters not specified
     end
 
     methods
@@ -109,6 +110,8 @@ classdef CloudParameters < handle
                             self.cloudAngle = v;
                         case {'lin','linear'}
                             self.lin = v;
+                        case 'other'
+                            self.other = v;
                         otherwise
                             error('Input option %s not supported!',varargin{nn});
                     end

@@ -128,6 +128,7 @@ classdef AbsorptionImage < handle
             %
             tmp = real(-log(imgWithAtoms./imgWithoutAtoms));
             tmp(isnan(tmp) | isinf(tmp)) = real(log(imgWithoutAtoms(isnan(tmp) | isinf(tmp))));
+            tmp(isnan(tmp) | isinf(tmp)) = 0;
             self.ODraw = tmp;
 %             self.peakOD = max(max(self.ODraw));
             %
@@ -371,6 +372,7 @@ classdef AbsorptionImage < handle
                     row = self.clouds(nn).fitdata.roiRow;
                     col = self.clouds(nn).fitdata.roiCol;
                     plot([col(1),col(end),col(end),col(1),col(1)],[row(1),row(1),row(end),row(end),row(1)],'r--');
+                    text(col(1),row(1)+20,sprintf('ROI %g',nn),'Color','w')
                 end
             end
         end

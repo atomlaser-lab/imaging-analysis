@@ -54,6 +54,7 @@ classdef BinaryImageData < RawImageData
                 filenames = 'last';
                 idx = 1;
                 rotation = 0;
+                load_images = true;
                 for nn = 1:2:numel(varargin)
                     cmd = lower(varargin{nn});
                     switch cmd
@@ -65,19 +66,25 @@ classdef BinaryImageData < RawImageData
                             idx = varargin{nn+1};
                         case 'rotation'
                             rotation = varargin{nn+1};
+                        case 'load_images'
+                            load_images = varargin{nn + 1};
                         otherwise
                             error('Option ''%s'' unsupported',cmd);
                     end
                 end
                 
-                if ~iscell(filenames) && strcmpi(filenames,'last')
-                    [self.files,self.status] = BinaryImageData.getLastFilenames(self.directory,idx);
-                elseif iscell(filenames) || isstring(filenames) || isnumeric(filenames)
-                    self.files = BinaryImageData.getFileInfo(self.directory,filenames);
-                elseif isstruct(filenames)
-                    self.files = filenames;
+                if ~isempty(filenames)
+                    if ~iscell(filenames) && strcmpi(filenames,'last')
+                        [self.files,self.status] = BinaryImageData.getLastFilenames(self.directory,idx);
+                    elseif iscell(filenames) || isstring(filenames) || isnumeric(filenames)
+                        self.files = BinaryImageData.getFileInfo(self.directory,filenames);
+                    elseif isstruct(filenames)
+                        self.files = filenames;
+                    end
                 end
-                self.readImages(rotation);
+                if load_images
+                    self.readImages(rotation);
+                end
             end
         end
 
@@ -301,6 +308,7 @@ classdef BinaryImageData < RawImageData
             index = 1;
             directory = BinaryImageData.DEFAULT_DIRECTORY;
             rotation = 0;
+            load_images = true;
             %
             % Parse inputs
             %
@@ -313,6 +321,8 @@ classdef BinaryImageData < RawImageData
                         directory = v;
                     case {'index','idx'}
                         index = v;
+                    case 'load_images'
+                        load_images = v;
                     case 'rotation'
                         rotation = v;
                 end
@@ -325,7 +335,7 @@ classdef BinaryImageData < RawImageData
                 numImages = numel(index);
                 raw(numImages,1) = BinaryImageData;
                 for mm = 1:numImages
-                    raw(mm).load('filenames','last','directory',directory,'index',index(mm),'rotation',rotation);
+                    raw(mm).load('filenames','last','directory',directory,'index',index(mm),'rotation',rotation,'load_images',load_images);
                 end
             elseif iscell(filenames)
                 %
@@ -338,7 +348,7 @@ classdef BinaryImageData < RawImageData
                 numImages = numel(filenames);
                 raw(numImages,1) = BinaryImageData;
                 for mm = 1:numImages
-                    raw(mm).load('filenames',filenames{mm},'directory',directory,'rotation',rotation);
+                    raw(mm).load('filenames',filenames{mm},'directory',directory,'rotation',rotation,'load_images',load_images);
                 end
             elseif isstruct(filenames)
                 %
@@ -352,7 +362,7 @@ classdef BinaryImageData < RawImageData
                 numImages = numel(filenames);
                 raw(numImages,1) = BinaryImageData;
                 for mm = 1:numImages
-                    raw(mm).load('filenames',filenames(mm),'directory',directory,'rotation',rotation);
+                    raw(mm).load('filenames',filenames(mm),'directory',directory,'rotation',rotation,'load_images',load_images);
                 end
             elseif isstring(filenames)
                 %
@@ -364,7 +374,7 @@ classdef BinaryImageData < RawImageData
                 raw(numImages,1) = BinaryImageData;
                 for mm = 1:numImages
                     fileidx = ((mm-1)*len+1):(mm*len);
-                    raw(mm).load('filenames',filenames(fileidx),'directory',directory,'rotation',rotation);
+                    raw(mm).load('filenames',filenames(fileidx),'directory',directory,'rotation',rotation,'load_images',load_images);
                 end
             elseif isnumeric(filenames)
                 %
@@ -374,7 +384,7 @@ classdef BinaryImageData < RawImageData
                 numImages = numel(filenames);
                 raw(numImages,1) = BinaryImageData;
                 for mm = 1:numImages
-                    raw(mm).load('filenames',filenames(mm),'directory',directory,'rotation',rotation);
+                    raw(mm).load('filenames',filenames(mm),'directory',directory,'rotation',rotation,'load_images',load_images);
                 end
             else
                 %
