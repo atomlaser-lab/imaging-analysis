@@ -249,7 +249,14 @@ classdef BinaryImageData < RawImageData
                 elseif isnumeric(filenames)
                     fname = sprintf('bec%d.bin',filenames(nn));
                 end
-                files(nn,1) = dir(fullfile(directory,fname)); %#ok<*AGROW>
+                tmp = dir(fullfile(directory,fname)); %#ok<*AGROW>
+                if ~isstruct(tmp)
+                    error(tmp);
+                elseif isempty(tmp)
+                    error('File %s not found',fullfile(directory,fname));
+                else
+                    files(nn,1) = tmp;
+                end
             end
             [~,k] = sortrows(datevec([files.datenum]));
             f = files(k);
