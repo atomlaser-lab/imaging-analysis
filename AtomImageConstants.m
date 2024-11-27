@@ -14,6 +14,7 @@ classdef AtomImageConstants < handle
         photonsPerCount             %Number of photons per "count" on the camera
         detuning                    %Detuning of the imaging beam in MHz
         gamma                       %FWHM of the resonance, in MHz
+        detuning_function           %Optional function for correcting detuning for complex lineshapes
 
         satOD                       %Saturation OD of the imaging system
         Isat                        %Saturation intensity in W/m^2 of the transition
@@ -93,6 +94,8 @@ classdef AtomImageConstants < handle
                             self.absorptionCrossSection = v;
                         case 'polarizationcorrection'
                             self.polarizationCorrection = v;
+                        case {'func','detuning_function'}
+                            self.detuning_function = v;
                         otherwise
                             error('Option %s not recognized',varargin{nn});
                     end
@@ -161,6 +164,14 @@ classdef AtomImageConstants < handle
             %   PX_SIZE = C.EFFECTIVE_PIXEL_SIZE returns the effective
             %   pixel size
             px_size = self.pixelSize/self.magnification;
+        end
+
+        function r = detuning_response(self)
+            if isempty(self.detuning_function)
+                r = 1./(1 + 4*self.detuning.^2./self.gamma.^2);
+            else
+                r = self.detuning_function(self.detuning);
+            end
         end
         
         function s = struct(self)

@@ -68,6 +68,7 @@ classdef CloudParameters < handle
                 %
                 p1 = varargin{1};p2 = varargin{2};
                 self.offset = [p1.offset(1),p2.offset(1)];
+                self.lin = [p1.lin,p2.lin];
                 self.pos = [p1.pos,p2.pos];
                 self.pos_bec = [p1.pos_bec,p2.pos_bec];
                 self.gaussAmp = [p1.gaussAmp(1),p2.gaussAmp(1)];

@@ -227,7 +227,8 @@ classdef AtomCloud < handle
                 % This converts from the raw number to an actual number
                 % based on the absorption cross section and detuning
                 %
-                self.N = (Nth + Nbec)./c.absorptionCrossSection.*(1+4*(c.detuning/c.gamma).^2);
+%                 self.N = (Nth + Nbec)./c.absorptionCrossSection.*(1+4*(c.detuning/c.gamma).^2);
+                self.N = (Nth + Nbec)./c.absorptionCrossSection./c.detuning_response;
                 %
                 % We can calculate the number of atoms by summing and
                 % subtracting off the background.  This works best for 2D

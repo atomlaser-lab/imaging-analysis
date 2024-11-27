@@ -20,6 +20,7 @@ classdef AbsorptionImage < handle
         y               %y position
         ODraw           %raw absorption image: -log(imgWithAtoms/imgWithoutAtoms)
         ODcorr          %corrected absorption image
+        sat_param       %Saturation parameter
         imgidxs         %Indicies in raw image data corresponding to data used for this instance
         offset_region   %Region of image to use for removing offsets on ODraw
         offset          %The offset that was removed from ODraw
@@ -154,7 +155,8 @@ classdef AbsorptionImage < handle
             % Correct for polarization and intensity saturation - this is
             % the corrected optical depth map
             %
-            self.ODcorr = c.polarizationCorrection*ODmod + (1 - exp(-ODmod)).*imgWithoutAtoms./Nsat;
+            self.sat_param = imgWithoutAtoms./Nsat;
+            self.ODcorr = c.polarizationCorrection*ODmod + (1 - exp(-ODmod)).*self.sat_param;
             self.ODcorr(isnan(self.ODcorr)) = 0;
             %
             % Create x and y vectors based on pixel size and magnification
@@ -162,6 +164,24 @@ classdef AbsorptionImage < handle
             self.x = (c.pixelSize/c.magnification)*(1:size(self.ODraw,2));
             self.y = (c.pixelSize/c.magnification)*(1:size(self.ODraw,1));
         end
+
+        function s = get_sat_param(self,idx)
+            %%GET_SAT_PARAM Returns the mean saturation parameter over the
+            %%cloud regions of interest
+            %
+            %   S = GET_SAT_PARAM(SELF,IDX) Returns the saturation
+            %   parameter over the clouds specificed by IDX
+            s = zeros(numel(self.clouds),1);
+            for nn = 1:numel(self.clouds)
+                [row,col] = self.clouds.fitdata.makeROIVectors;
+                s(nn) = mean(mean(self.sat_param(row,col)));
+            end
+            if nargin >= 2
+                s = s(idx);
+            end
+
+        end
+
         
         function self = butterworth2D(self,spatialWidth,order,filterType)
             %BUTTERWORTH2D Applies a 2D Butterworth filter to the corrected

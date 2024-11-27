@@ -1,49 +1,62 @@
 function [img,nd_image,fb] = Abs_Analysis_FB(varargin)
-pause(1);
+% pause(0.5);
 atomType = 'Rb87';
-imaging_system = 'low res';
+%%% Set camera:
 % imaging_system = 'low res';
+imaging_system = 'high res';
+% imaging_system = 'NDI';
+
 tof = evalin('base', 'opt.tof'); % get the 'tof' variable from the base workspace
 detuning = evalin('base', 'opt.detuning'); % get the 'tof' variable from the base workspace
-% detuning = 8;
-dispOD = [0,1.5]; % [0.0, 1.5];
-plotOpt = 1;
+dispOD = [0,1]; % [0.0, 1.5];
+plotOpt = 0;
 plotROI = 0;
 useFilt = 0;
-filtWidth = 50e-6;
+filtWidth = 10e-6;
 %% Set imaging region-of-interest (ROI)
-roiRow = [1,2048]; % FULL FRAME 
-roiCol = [1,2048]; % FULL FRAME 
-% roiRow =  1600 + 150*[-1,1]; % 150
-% roiCol =  1090 + 150*[-1,1]; % 150
-% roiCol =  880 + 150*[-1,1]; % 150
-roiStep = 1*[1,1];
+% roiRow = [1,2048]; % FULL FRAME 
+% roiCol = [1,2048]; % FULL FRAME 
+% roiRow = [520, 2048]; % COLUMN
+% roiCol = 1000 + [-1,1]*200; % COLUMN
+roiRow = 800 + 200*[-1,1]; % For high res (20 ms TOF)
+roiCol =  950 + 200*[-1,1]; % For high res (20 ms TOF) % 970
+% roiRow =  1054 + 300*[-1,1]; % For low res (20 ms TOF)
+% roiCol =  1032 + 300*[-1,1]; % For low res (20 ms TOF)
+
+roiStep = 2*[1,1];
 % fittype = 'gauss2d';
-fittype = 'gauss1d';
-% fittype = 'twocomp2d';
+% fittype = 'gauss1d';
+% fittype = 'bec2d';
+fittype = 'twocomp2d';
 
 % offset_region.row = [1600,1800];
 % offset_region.col = [200,400];
 offset_region.row = [];
 offset_region.col = [];
+
 %% Imaging parameters
 
 imgconsts = AtomImageConstants(atomType,'tof',tof,'detuning',detuning,...
     'pixelsize',5.5e-6,'exposureTime',40e-6,'polarizationcorrection',1,'satOD',11);
 redpower = evalin('base', 'opt.redpower');
 raycus = evalin('base', 'opt.raycus');
-imgconsts.freqs = 2*pi*get_trap_freq(raycus, redpower); % double power of raykus
-% imgconsts.freqs = 2*pi*get_trap_freq(2*1,2);
+feedback = 1.25;
+imgconsts.freqs = 2 * pi * get_trap_freq(raycus, redpower); % includes ramp
+% imgconsts.freqs = 2 * pi * get_trap_freq_AOM(raycus + 0.1, redpower, feedback); % includes ramp to raycus and FBL
 if strcmpi(imaging_system,'high res')
-    imgconsts.magnification = 3.49;% 3.5;
+    imgconsts.magnification = 3;
+    imgconsts.photonsPerCount = 0.64;
+    imgconsts.detuning_function = @double_resonance;
+    image_rotation = -90;
 elseif strcmpi(imaging_system,'low res')
     imgconsts.magnification = 0.955;
+elseif strcmpi(imaging_system,'NDI')
+    imgconsts.magnification = 3.01; 
 elseif strcmpi(imaging_system,'vertical')
     imgconsts.magnification = 5.42;
     imgconsts.polarizationCorrection = 3/2;    %This is only approximate for sigma and pi polarised light
 end
-imgconsts.photonsPerCount = 0.4747;
-image_rotation = -90;
+
 directory = 'D:\labview-images';
 
 %% Load raw data
@@ -179,8 +192,12 @@ if (numImages == 1 && raw.is_multi_camera && size(raw.images{1},3) > 1) || (numI
     
     %%% Save the image and get rows and columns
     raw.images = raw.images{1};
-    row = 1:size(raw.images,1);
-    col = 1:size(raw.images,2);
+
+    %%% ROTATE IMAGE
+    % raw.images = pagetranspose(flip(raw.images));
+
+    row = 1:size(raw.images,1); % WAS 1
+    col = 1:size(raw.images,2); % WAS 2
 
 % Old things for debugging: 
 %     max_idx = size(raw.images,3) - 3;
@@ -206,59 +223,59 @@ if (numImages == 1 && raw.is_multi_camera && size(raw.images{1},3) > 1) || (numI
     nd_image_orig = nd_image;
     
 
-    % ~~~ ~~~ ~~~ ~~~ ~~~ 
-    %%% From here to...
-    if(0)
-        %%% Apply a 4th order Butterworth filter to smooth the data:
-        width = 15;                                                             % Width of the butterwork filter
-        order = 4;                                                              % Order of the filter
-        % nd_image = const.butterworth2D(nd_image,width,order);                   % Apply a 4th order BW filter... acts a LP filter
-    
-        %%% Original code by RT:
-%         nd_image = const.butterworth2D(nd_image,15);                         % Apply a 4th order BW filter... acts a LP filter
-    
-        %%% Apply a low-pass filter to remove high freq noise
-        order = 1;                                                              % Sets the filter order for dct filter
-        % nd_image = dct_filter(nd_image,15,order);                               % Apply a discrte cosine transform filter (LP filter)    
-    
-        %%% Calculate the inverse Laplacian:
-        for nn = 1:size(nd_image,3)
-            %%% Calculate the Fourier transform:
-    %         Y = fftshift(fft2(nd_image(:,:,nn)));
-            Y = fft2(nd_image(:,:,nn));                                         % Apply a 2D Fourier transform    
-            Y(1,1) = 0;                                                         % Regularisation parameter sets the origin to zero
-            Y = fftshift(Y);                                                    % Shifts the data due to shift that is built into the Fourier transform
-    
-            %%% Generate the k vector that 
-            kx = 2*pi/(imgconsts.pixelSize/imgconsts.magnification)*linspace(-0.5,0.5,size(nd_image,2));
-            ky = 2*pi/(imgconsts.pixelSize/imgconsts.magnification)*linspace(-0.5,0.5,size(nd_image,1));
-            
-            %%% Make a mesh grid 
-            [KX,KY] = meshgrid(kx,ky);
-            K2 = KX.^2 + KY.^2;
-            
-            %%% Define the order 1 filter:
-            F = 1./K2;
-            F(isinf(F) | isnan(F)) = 1/eps;
-    
-            %%% Generate the image in real space:
-            nd_image(:,:,nn) = real(ifft2(ifftshift(F.*Y)));                    % Apply my filter, and then shift back and then inverse transform:
-        end
-    
-        %%% Apply a non-linear filter:
-%         nd_image = nd_image.^6;                                                 % Apply a 6th order filter to supress low freq noise
-        % nd_image = nd_image.^2;
-    
-        %%% Only include the ROI:
-        % sum_idx_y = 1:size(nd_image,1);
-        % sum_idx_x = 1:size(nd_image,2);
-        row = 1:size(nd_image,1);                                               % Calculates the number of rows 
-        col = 1:size(nd_image,2);                                               % Calculates the number of columns
-        % sum_idx_y = 30:40;
-        % sum_idx_x = 30:90;
-        nd_image = nd_image(row,col);
-    end 
-    %%% ... here was disabled
+%     % ~~~ ~~~ ~~~ ~~~ ~~~ 
+%     %%% From here to...
+%     if(0)
+%         %%% Apply a 4th order Butterworth filter to smooth the data:
+%         width = 15;                                                             % Width of the butterwork filter
+%         order = 4;                                                              % Order of the filter
+%         % nd_image = const.butterworth2D(nd_image,width,order);                   % Apply a 4th order BW filter... acts a LP filter
+%     
+%         %%% Original code by RT:
+% %         nd_image = const.butterworth2D(nd_image,15);                         % Apply a 4th order BW filter... acts a LP filter
+%     
+%         %%% Apply a low-pass filter to remove high freq noise
+%         order = 1;                                                              % Sets the filter order for dct filter
+%         % nd_image = dct_filter(nd_image,15,order);                               % Apply a discrte cosine transform filter (LP filter)    
+%     
+%         %%% Calculate the inverse Laplacian:
+%         for nn = 1:size(nd_image,3)
+%             %%% Calculate the Fourier transform:
+%     %         Y = fftshift(fft2(nd_image(:,:,nn)));
+%             Y = fft2(nd_image(:,:,nn));                                         % Apply a 2D Fourier transform    
+%             Y(1,1) = 0;                                                         % Regularisation parameter sets the origin to zero
+%             Y = fftshift(Y);                                                    % Shifts the data due to shift that is built into the Fourier transform
+%     
+%             %%% Generate the k vector that 
+%             kx = 2*pi/(imgconsts.pixelSize/imgconsts.magnification)*linspace(-0.5,0.5,size(nd_image,2));
+%             ky = 2*pi/(imgconsts.pixelSize/imgconsts.magnification)*linspace(-0.5,0.5,size(nd_image,1));
+%             
+%             %%% Make a mesh grid 
+%             [KX,KY] = meshgrid(kx,ky);
+%             K2 = KX.^2 + KY.^2;
+%             
+%             %%% Define the order 1 filter:
+%             F = 1./K2;
+%             F(isinf(F) | isnan(F)) = 1/eps;
+%     
+%             %%% Generate the image in real space:
+%             nd_image(:,:,nn) = real(ifft2(ifftshift(F.*Y)));                    % Apply my filter, and then shift back and then inverse transform:
+%         end
+%     
+%         %%% Apply a non-linear filter:
+% %         nd_image = nd_image.^6;                                                 % Apply a 6th order filter to supress low freq noise
+%         % nd_image = nd_image.^2;
+%     
+%         %%% Only include the ROI:
+%         % sum_idx_y = 1:size(nd_image,1);
+%         % sum_idx_x = 1:size(nd_image,2);
+%         row = 1:size(nd_image,1);                                               % Calculates the number of rows 
+%         col = 1:size(nd_image,2);                                               % Calculates the number of columns
+%         % sum_idx_y = 30:40;
+%         % sum_idx_x = 30:90;
+%         nd_image = nd_image(row,col);
+%     end 
+%     %%% ... here was disabled
 
     if plotOpt
         figure(3);clf;
